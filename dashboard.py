@@ -63,20 +63,34 @@ except Exception as e:
 # ============================
 # 📁 Upload Gambar
 # ============================
+# Upload file
 uploaded_file = st.file_uploader("Unggah gambar", type=["jpg", "jpeg", "png"])
 
-if uploaded_file is not None:
-    # Simpan sementara ke file
-    import tempfile
-    import os
+# Muat model YOLOv8
+try:
+    model = YOLO("best.pt")
+except Exception as e:
+    st.error(f"Gagal memuat model YOLOv8: {e}")
+    st.stop()
 
+if uploaded_file is not None:
+    # Simpan sementara
     temp_dir = tempfile.mkdtemp()
     file_path = os.path.join(temp_dir, uploaded_file.name)
     with open(file_path, "wb") as f:
         f.write(uploaded_file.read())
 
-    # Jalankan YOLO pada file itu
-    results = model.predict(source=file_path, conf=0.25)
-    st.image(results[0].plot(), caption="Hasil Deteksi")
+    # Prediksi YOLO
+    try:
+        results = model.predict(source=file_path, conf=0.25)
+        result_img = results[0].plot()
 
-    # (Opsional) jangan hapus dulu file sementara agar YOLO bisa membaca de
+        # Tampilkan dalam dua kolom
+        col1, col2 = st.columns(2)
+        with col1:
+            st.image(Image.open(file_path), caption="Gambar Asli", use_container_width=True)
+        with col2:
+            st.image(result_img, caption="Hasil Deteksi", use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Terjadi kesalahan saat melakukan prediksi: {e}")

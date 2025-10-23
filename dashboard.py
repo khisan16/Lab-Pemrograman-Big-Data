@@ -1,61 +1,99 @@
 import streamlit as st
-from ultralytics import YOLO
 from PIL import Image
+from ultralytics import YOLO
 import tempfile
 import os
 
-# Judul aplikasi
-st.title("🧠 Object Detection Dashboard (YOLOv8)")
+# ============================
+# 🔧 Konfigurasi Halaman
+# ============================
+st.set_page_config(
+    page_title="Object Detection Dashboard (YOLOv8)",
+    page_icon="🪼",
+    layout="wide",
+)
 
-# Load model
-MODEL_PATH = "model/best.pt"
+# ============================
+# 🎨 CSS Tema Gelap Custom
+# ============================
+st.markdown("""
+    <style>
+    /* Latar belakang utama */
+    body {
+        background-color: #0b0c10;
+        color: #c5c6c7;
+    }
 
-@st.cache_resource
-def load_model():
-    try:
-        model = YOLO(MODEL_PATH)
-        st.success("Model berhasil dimuat ✅")
-        return model
-    except Exception as e:
-        st.error(f"Gagal memuat model: {e}")
-        return None
+    [data-testid="stAppViewContainer"] {
+        background-color: #0b0c10;
+        background-image: linear-gradient(160deg, #0b0c10 0%, #1f2833 100%);
+        color: #c5c6c7;
+    }
 
-model = load_model()
+    [data-testid="stSidebar"] {
+        background-color: #1f2833;
+    }
 
-# Pilihan upload
-st.sidebar.header("Upload File")
-upload_type = st.sidebar.radio("Pilih jenis file:", ["Gambar", "Video"])
+    h1, h2, h3, h4 {
+        color: #66fcf1;
+        font-weight: 700;
+    }
 
-if upload_type == "Gambar":
-    uploaded_file = st.file_uploader("Upload gambar...", type=["jpg", "jpeg", "png"])
-    if uploaded_file is not None and model:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Gambar Asli", use_container_width=True)
+    .stButton button {
+        background: linear-gradient(90deg, #45a29e, #66fcf1);
+        color: #0b0c10;
+        font-weight: bold;
+        border-radius: 8px;
+    }
 
-        # Simpan sementara untuk inferensi
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp:
-            image.save(temp.name)
-            results = model(temp.name)
-            res_plotted = results[0].plot()
+    .stFileUploader label {
+        color: #c5c6c7;
+        font-size: 1rem;
+        font-weight: 500;
+    }
 
-        st.image(res_plotted, caption="Hasil Deteksi", use_container_width=True)
+    .stRadio label {
+        color: #66fcf1 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-elif upload_type == "Video":
-    uploaded_video = st.file_uploader("Upload video...", type=["mp4", "avi", "mov"])
-    if uploaded_video is not None and model:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-            temp_video.write(uploaded_video.read())
-            st.video(temp_video.name)
-            st.info("Proses deteksi sedang berlangsung...")
+# ============================
+# 🪼 Header
+# ============================
+st.title("🪼 Object Detection Dashboard (YOLOv8)")
+st.markdown("**Deteksi Objek Gambar Otomatis dengan Model YOLOv8**")
 
-            # Jalankan deteksi
-            results = model(temp_video.name)
-            output_path = os.path.join("runs", "detect", "predict", "output.mp4")
+# ============================
+# 📦 Load Model
+# ============================
+try:
+    model_path = "model/best.pt"
+    model = YOLO(model_path)
+except Exception as e:
+    st.error(f"Gagal memuat model YOLOv8: {e}")
+    st.stop()
 
-            # Cek hasil
-            if os.path.exists(output_path):
-                st.video(output_path)
-            else:
-                st.warning("Video hasil tidak ditemukan.")
+# ============================
+# 📁 Upload File (Gambar saja)
+# ============================
+uploaded_file = st.file_uploader("📤 Unggah gambar untuk deteksi objek", type=["jpg", "jpeg", "png"])
 
-st.sidebar.info("Model YOLOv8 - Deteksi berbasis file best.pt")
+if uploaded_file is not None:
+    # Simpan sementara file
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    temp_file.write(uploaded_file.read())
+    image = Image.open(temp_file.name)
+
+    # Tampilkan gambar yang diunggah
+    st.image(image, caption="🖼️ Gambar yang diunggah", use_column_width=True)
+
+    # Tombol deteksi
+    if st.button("🚀 Jalankan Deteksi"):
+        with st.spinner("Mendeteksi objek..."):
+            results = model(temp_file.name)
+            result_img = results[0].plot()  # hasil deteksi ke array numpy
+            st.image(result_img, caption="🎯 Hasil Deteksi YOLOv8", use_column_width=True)
+
+    # Hapus file sementara setelah selesai
+    os.remove(temp_file.name)

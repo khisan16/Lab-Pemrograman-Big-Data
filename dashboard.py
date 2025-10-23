@@ -1,135 +1,138 @@
 import streamlit as st
-from ultralytics import YOLO
-import tensorflow as tf
-from tensorflow.keras.preprocessing import image
-import numpy as np
 from PIL import Image
+import numpy as np
 
 # ==========================
-# Konfigurasi Halaman
+# Streamlit & Models
+# ==========================
+try:
+    from ultralytics import YOLO
+    yolov8_available = True
+except ImportError:
+    yolov8_available = False
+
+try:
+    import tensorflow as tf
+    from tensorflow.keras.preprocessing import image
+    tf_available = True
+except ImportError:
+    tf_available = False
+
+# ==========================
+# Halaman Streamlit
 # ==========================
 st.set_page_config(
-    page_title="AI Vision Dashboard",
+    page_title="Dashboard YOLO & Klasifikasi Sensitif",
     page_icon="🧠",
     layout="wide",
-    initial_sidebar_state="expanded",
 )
+st.title("🧠 Image Classification & Object Detection (Sensitif)")
 
 # ==========================
 # Load Models
 # ==========================
 @st.cache_resource
-def load_models():
-    yolo_model = YOLO("model/best.pt")  # Model deteksi objek
-    classifier = tf.keras.models.load_model("model/hisan_model.h5")  # Model klasifikasi
-    return yolo_model, classifier
+def load_yolo_model(path="model/best.pt"):
+    try:
+        model = YOLO(path)
+        return model
+    except Exception as e:
+        st.warning(f"❌ Gagal memuat YOLO: {e}")
+        return None
 
-yolo_model, classifier = load_models()
+@st.cache_resource
+def load_classifier_model(path="model/hisan_model.h5"):
+    try:
+        model = tf.keras.models.load_model(path)
+        return model
+    except Exception as e:
+        st.warning(f"❌ Gagal memuat classifier: {e}")
+        return None
 
-# Daftar label kelas (ubah sesuai model CNN kamu)
-CLASS_NAMES = ["Kelas 1", "Kelas 2", "Kelas 3"]
+yolo_model = load_yolo_model() if yolov8_available else None
+classifier_model = load_classifier_model() if tf_available else None
 
 # ==========================
-# UI
+# Sidebar Mode
 # ==========================
-st.title("🧠 AI Vision Dashboard")
-st.markdown(
-    """
-    Selamat datang di **Dashboard Deteksi & Klasifikasi Gambar**.  
-    Pilih mode di sidebar untuk menggunakan model **YOLOv8 Object Detection** atau **Image Classification CNN**.
-    """
+menu = st.sidebar.selectbox(
+    "Pilih Mode:",
+    ["Deteksi Objek (YOLO Sensitif)", "Klasifikasi Gambar"]
 )
 
-menu = st.sidebar.radio("🧩 Pilih Mode:", ["📦 Deteksi Objek (YOLO)", "🖼️ Klasifikasi Gambar"])
-
-uploaded_file = st.file_uploader("📤 Unggah Gambar", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("📸 Unggah Gambar", type=["jpg", "jpeg", "png"])
 
 # ==========================
-# LOGIKA UTAMA
+# Fungsi Resize & Preprocess
+# ==========================
+def prepare_image(img, size=(640, 640)):
+    return img.resize(size)
+
+def preprocess_for_classifier(img, target_shape):
+    img_rgb = img.convert("RGB")
+    img_resized = img_rgb.resize(target_shape)
+    img_array = image.img_to_array(img_resized)
+    img_array = np.expand_dims(img_array, axis=0) / 255.0
+    return img_array
+
+# ==========================
+# Deteksi Objek Sensitif
+# ==========================
+def detect_objects(img):
+    img_resized = prepare_image(img)
+    # Sangat peka: conf rendah, iou rendah
+    results = yolo_model(img_resized, conf=0.01, iou=0.05, verbose=False)
+    return results
+
+# ==========================
+# Main Logic
 # ==========================
 if uploaded_file is not None:
     img = Image.open(uploaded_file)
-    col1, col2 = st.columns([1, 1])
+    st.image(img, caption="Gambar yang diunggah", use_container_width=True)
 
-    with col1:
-        st.image(img, caption="📸 Gambar Diupload", use_container_width=True)
-
-    with col2:
-        # ==========================
-        # MODE YOLO DETECTION
-        # ==========================
-        if "YOLO" in menu:
+    if menu == "Deteksi Objek (YOLO Sensitif)":
+        if yolo_model is None:
+            st.warning("YOLOv8 tidak tersedia. Silakan cek requirements dan model best.pt.")
+        else:
             with st.spinner("🔍 Sedang mendeteksi objek..."):
-                # Tambahkan parameter agar YOLO lebih sensitif
-                results = yolo_model.predict(
-                    source=img,
-                    conf=0.25,  # tingkat kepercayaan minimal
-                    iou=0.45,   # intersection over union threshold
-                    imgsz=640   # ukuran gambar
-                )
-
-                # Gambar hasil deteksi
+                results = detect_objects(img)
                 result_img = results[0].plot()
-                st.image(result_img, caption="Hasil Deteksi YOLO", use_container_width=True)
+                st.image(result_img, caption="Hasil Deteksi (Sangat Sensitif)", use_container_width=True)
 
-                # Debug: tampilkan hasil deteksi mentah
-                st.write("### 🔍 Debug Data Deteksi:")
-                st.write(results[0].boxes.data)
-
-                # Tampilkan nama label model
-                st.write("📋 Label Model:", yolo_model.names)
-
-                # Analisis hasil deteksi
-                detections = results[0].boxes.data
-                if len(detections) > 0:
-                    st.success(f"✅ {len(detections)} objek terdeteksi!")
-                    for i, det in enumerate(detections, 1):
-                        cls_id = int(det[5])
-                        conf = float(det[4])
-                        label = yolo_model.names.get(cls_id, f"Class {cls_id}")
-                        st.write(f"**{i}. {label} ({conf*100:.2f}% confidence)**")
+                boxes = results[0].boxes
+                if len(boxes) > 0:
+                    st.subheader("📦 Detil Objek Terdeteksi:")
+                    for i, box in enumerate(boxes):
+                        cls_name = results[0].names[int(box.cls)]
+                        conf = float(box.conf)
+                        st.write(f"**Objek {i+1}:** {cls_name} ({conf:.2%})")
                 else:
-                    st.warning("⚠️ Tidak ada objek terdeteksi. Coba turunkan nilai `conf` di kode YOLO.")
-        
-        # ==========================
-        # MODE CNN CLASSIFICATION
-        # ==========================
-        elif "Klasifikasi" in menu:
+                    st.info("Tidak ada objek terdeteksi. Coba unggah gambar lain atau pastikan objek terlihat jelas.")
+
+    elif menu == "Klasifikasi Gambar":
+        if classifier_model is None:
+            st.warning("Model klasifikasi tidak tersedia. Silakan cek path hisan_model.h5.")
+        else:
             with st.spinner("🧠 Sedang melakukan klasifikasi..."):
-                # Preprocessing gambar untuk model CNN
-                img_resized = img.resize((96, 96))  # ubah sesuai input model CNN kamu
-                img_array = image.img_to_array(img_resized)
-                img_array = np.expand_dims(img_array, axis=0) / 255.0
+                try:
+                    target_size = classifier_model.input_shape[1:3]
+                    img_array = preprocess_for_classifier(img, target_size)
+                    prediction = classifier_model.predict(img_array)
+                    class_index = int(np.argmax(prediction))
+                    confidence = float(np.max(prediction))
 
-                # Prediksi
-                prediction = classifier.predict(img_array)
-                class_index = int(np.argmax(prediction))
-                confidence = float(np.max(prediction))
+                    st.success(f"### 🏷️ Kelas Prediksi: {class_index}")
+                    st.progress(confidence)
+                    st.caption(f"Probabilitas: {confidence:.2%}")
 
-                # Hasil klasifikasi
-                class_name = CLASS_NAMES[class_index] if class_index < len(CLASS_NAMES) else f"Kelas {class_index}"
-                st.success("✅ Klasifikasi Berhasil!")
-                st.write(f"### 🔎 Hasil Prediksi: **{class_name}**")
-                st.progress(confidence)
-                st.write(f"Probabilitas: **{confidence*100:.2f}%**")
+                    if prediction.shape[1] > 1:
+                        st.subheader("📊 Confidence per Kelas")
+                        for i, conf in enumerate(prediction[0]):
+                            st.write(f"**Kelas {i}**: {conf:.2%}")
 
-                # Tampilkan probabilitas semua kelas
-                st.subheader("📊 Probabilitas Semua Kelas:")
-                for i, prob in enumerate(prediction[0]):
-                    label = CLASS_NAMES[i] if i < len(CLASS_NAMES) else f"Kelas {i}"
-                    st.write(f"{label}: {prob*100:.2f}%")
-                    st.progress(float(prob))
+                except Exception as e:
+                    st.error(f"Terjadi kesalahan saat klasifikasi: {e}")
 
 else:
-    st.info("👆 Silakan unggah gambar terlebih dahulu untuk memulai.")
-
-# ==========================
-# Footer
-# ==========================
-st.markdown(
-    """
-    ---
-    🧑‍💻 **Dikembangkan oleh:** Tim AI Vision  
-    ⚙️ Model: YOLOv8 + TensorFlow CNN  
-    """
-)
+    st.info("⬆️ Silakan unggah gambar terlebih dahulu untuk memulai analisis.")

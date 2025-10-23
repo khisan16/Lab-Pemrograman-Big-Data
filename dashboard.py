@@ -9,14 +9,13 @@ from PIL import Image
 # Konfigurasi Halaman
 # ==========================
 st.set_page_config(
-    page_title="AI Vision Dashboard",
+    page_title="Dashboard YOLO & Klasifikasi",
     page_icon="🧠",
     layout="wide",
-    initial_sidebar_state="expanded",
 )
 
 # ==========================
-# Load Models
+# Load Models (cached agar cepat)
 # ==========================
 @st.cache_resource
 def load_models():
@@ -24,59 +23,62 @@ def load_models():
     classifier = tf.keras.models.load_model("model/hisan_model.h5")  # Model klasifikasi
     return yolo_model, classifier
 
-yolo_model, classifier = load_models()
-
-# Daftar label kelas (ubah sesuai model kamu)
-CLASS_NAMES = ["Kelas 1", "Kelas 2", "Kelas 3"]
+try:
+    yolo_model, classifier = load_models()
+    model_loaded = True
+except Exception as e:
+    st.error(f"❌ Gagal memuat model: {e}")
+    model_loaded = False
 
 # ==========================
-# UI
+# UI Utama
 # ==========================
-st.title("🧠 AI Vision Dashboard")
-st.markdown(
-    """
-    Selamat datang di **Dashboard Deteksi & Klasifikasi Gambar**.  
-    Pilih mode di sidebar untuk menggunakan model **YOLO Object Detection** atau **Image Classification CNN**.
-    """
+st.title("🧠 Image Classification & Object Detection App")
+
+menu = st.sidebar.selectbox(
+    "Pilih Mode:",
+    ["Deteksi Objek (YOLO)", "Klasifikasi Gambar"],
 )
 
-menu = st.sidebar.radio("🧩 Pilih Mode:", ["📦 Deteksi Objek (YOLO)", "🖼️ Klasifikasi Gambar"])
+uploaded_file = st.file_uploader("📸 Unggah Gambar", type=["jpg", "jpeg", "png"])
 
-uploaded_file = st.file_uploader("📤 Unggah Gambar", type=["jpg", "jpeg", "png"])
-
-# ==========================
-# LOGIKA UTAMA
-# ==========================
-if uploaded_file is not None:
+if uploaded_file is not None and model_loaded:
     img = Image.open(uploaded_file)
-    col1, col2 = st.columns([1, 1])
+    st.image(img, caption="Gambar yang diunggah", use_container_width=True)
 
-    with col1:
-        st.image(img, caption="Gambar Diupload", use_container_width=True)
+    # ==========================
+    # MODE DETEKSI OBJEK (YOLO)
+    # ==========================
+    if menu == "Deteksi Objek (YOLO)":
+        with st.spinner("🔍 Sedang mendeteksi objek..."):
+            results = yolo_model(img)
+            result_img = results[0].plot()  # hasil deteksi (gambar dengan box)
+            st.image(result_img, caption="Hasil Deteksi", use_container_width=True)
 
-    with col2:
-        if "YOLO" in menu:
-            with st.spinner("🔍 Sedang mendeteksi objek..."):
-                results = yolo_model(img)
-                result_img = results[0].plot()
-                st.image(result_img, caption="Hasil Deteksi", use_container_width=True)
+            # Jika ada hasil deteksi, tampilkan detail
+            if len(results[0].boxes) > 0:
+                st.subheader("📦 Detil Objek Terdeteksi:")
+                for i, box in enumerate(results[0].boxes):
+                    cls_name = results[0].names[int(box.cls)]
+                    conf = float(box.conf)
+                    st.write(f"**Objek {i+1}:** {cls_name} ({conf:.2%})")
+            else:
+                st.info("Tidak ada objek terdeteksi pada gambar ini.")
 
-                # Tampilkan hasil deteksi dalam teks
-                detections = results[0].boxes.data
-                if len(detections) > 0:
-                    st.success(f"✅ {len(detections)} objek terdeteksi!")
-                    for i, det in enumerate(detections, 1):
-                        cls_id = int(det[5])
-                        conf = float(det[4])
-                        label = yolo_model.names.get(cls_id, "Unknown")
-                        st.write(f"**{i}. {label} ({conf*100:.2f}% confidence)**")
-                else:
-                    st.warning("⚠️ Tidak ada objek terdeteksi.")
-        
-        elif "Klasifikasi" in menu:
-            with st.spinner("🧠 Sedang melakukan klasifikasi..."):
+    # ==========================
+    # MODE KLASIFIKASI GAMBAR
+    # ==========================
+    elif menu == "Klasifikasi Gambar":
+        with st.spinner("🧠 Sedang melakukan klasifikasi..."):
+            try:
+                # Pastikan format warna sesuai
+                img = img.convert("RGB")
+
+                # Otomatis sesuaikan ukuran input dengan model
+                target_size = classifier.input_shape[1:3]
+                img_resized = img.resize(target_size)
+
                 # Preprocessing
-                img_resized = img.resize((224, 224))
                 img_array = image.img_to_array(img_resized)
                 img_array = np.expand_dims(img_array, axis=0) / 255.0
 
@@ -85,30 +87,18 @@ if uploaded_file is not None:
                 class_index = int(np.argmax(prediction))
                 confidence = float(np.max(prediction))
 
-                # Hasil
-                class_name = CLASS_NAMES[class_index] if class_index < len(CLASS_NAMES) else f"Kelas {class_index}"
-                st.success("✅ Klasifikasi Berhasil!")
-                st.write(f"### 🔎 Hasil Prediksi: **{class_name}**")
+                # Tampilkan hasil
+                st.success(f"### 🏷️ Kelas Prediksi: {class_index}")
                 st.progress(confidence)
-                st.write(f"Probabilitas: **{confidence*100:.2f}%**")
+                st.caption(f"Probabilitas: {confidence:.2%}")
 
-                # Jika mau menampilkan semua kelas:
-                st.subheader("📊 Probabilitas Semua Kelas:")
-                for i, prob in enumerate(prediction[0]):
-                    label = CLASS_NAMES[i] if i < len(CLASS_NAMES) else f"Kelas {i}"
-                    st.write(f"{label}: {prob*100:.2f}%")
-                    st.progress(float(prob))
+                # Jika model punya lebih dari 1 kelas, tampilkan tabel confidence
+                if prediction.shape[1] > 1:
+                    st.subheader("📊 Confidence per Kelas")
+                    for i, conf in enumerate(prediction[0]):
+                        st.write(f"**Kelas {i}**: {conf:.2%}")
 
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat klasifikasi: {e}")
 else:
-    st.info("👆 Silakan unggah gambar terlebih dahulu untuk memulai.")
-
-# ==========================
-# Footer
-# ==========================
-st.markdown(
-    """
-    ---
-    🧑‍💻 **Dikembangkan oleh:** Tim AI Vision  
-    📦 Model: YOLOv8 + TensorFlow CNN  
-    """
-)
+    st.info("⬆️ Silakan unggah gambar terlebih dahulu untuk memulai analisis.")

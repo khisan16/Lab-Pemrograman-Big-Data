@@ -3,7 +3,7 @@ from PIL import Image
 import numpy as np
 
 # ==========================
-# Streamlit & Models
+# Import YOLO & TF
 # ==========================
 try:
     from ultralytics import YOLO
@@ -49,8 +49,20 @@ def load_classifier_model(path="model/hisan_model.h5"):
         st.warning(f"❌ Gagal memuat classifier: {e}")
         return None
 
+# Load models
 yolo_model = load_yolo_model() if yolov8_available else None
 classifier_model = load_classifier_model() if tf_available else None
+
+# ==========================
+# Load kelas dari file (opsional)
+# ==========================
+import os
+classes_file = "model/classes.txt"
+if os.path.exists(classes_file):
+    with open(classes_file, "r") as f:
+        class_labels = [line.strip() for line in f.readlines()]
+else:
+    class_labels = None
 
 # ==========================
 # Sidebar Mode
@@ -91,6 +103,9 @@ if uploaded_file is not None:
     img = Image.open(uploaded_file)
     st.image(img, caption="Gambar yang diunggah", use_container_width=True)
 
+    # ======================
+    # Deteksi Objek YOLO
+    # ======================
     if menu == "Deteksi Objek (YOLO Sensitif)":
         if yolo_model is None:
             st.warning("YOLOv8 tidak tersedia. Silakan cek requirements dan model best.pt.")
@@ -110,10 +125,21 @@ if uploaded_file is not None:
                 else:
                     st.info("Tidak ada objek terdeteksi. Coba unggah gambar lain atau pastikan objek terlihat jelas.")
 
+    # ======================
+    # Klasifikasi Gambar
+    # ======================
     elif menu == "Klasifikasi Gambar":
         if classifier_model is None:
             st.warning("Model klasifikasi tidak tersedia. Silakan cek path hisan_model.h5.")
         else:
+            # Tampilkan jumlah kelas & nama kelas
+            num_classes = classifier_model.output_shape[1]
+            st.info(f"Jumlah kelas: {num_classes}")
+            if class_labels:
+                st.info(f"Nama kelas: {class_labels}")
+            else:
+                st.info(f"Kelas (index): {list(range(num_classes))}")
+
             with st.spinner("🧠 Sedang melakukan klasifikasi..."):
                 try:
                     target_size = classifier_model.input_shape[1:3]
@@ -129,7 +155,8 @@ if uploaded_file is not None:
                     if prediction.shape[1] > 1:
                         st.subheader("📊 Confidence per Kelas")
                         for i, conf in enumerate(prediction[0]):
-                            st.write(f"**Kelas {i}**: {conf:.2%}")
+                            label = class_labels[i] if class_labels else i
+                            st.write(f"**{label}**: {conf:.2%}")
 
                 except Exception as e:
                     st.error(f"Terjadi kesalahan saat klasifikasi: {e}")

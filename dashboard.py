@@ -63,25 +63,20 @@ except Exception as e:
 # ============================
 # 📁 Upload Gambar
 # ============================
-uploaded_file = st.file_uploader("📤 Unggah gambar untuk deteksi objek", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Unggah gambar", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    # Simpan file ke sementara
+    # Simpan sementara ke file
+    import tempfile
+    import os
+
     temp_dir = tempfile.mkdtemp()
-    temp_path = os.path.join(temp_dir, uploaded_file.name)
-    
-    with open(temp_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
+    file_path = os.path.join(temp_dir, uploaded_file.name)
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.read())
 
-    # Tampilkan gambar
-    image = Image.open(temp_path)
-    st.image(image, caption="🖼️ Gambar yang diunggah", use_column_width=True)
-
-    # Jalankan deteksi
-    if st.button("🚀 Jalankan Deteksi"):
-        with st.spinner("Mendeteksi objek..."):
-            results = model(temp_path)
-            result_img = results[0].plot()  # hasil deteksi dalam array numpy
-            st.image(result_img, caption="🎯 Hasil Deteksi YOLOv8", use_column_width=True)
+    # Jalankan YOLO pada file itu
+    results = model.predict(source=file_path, conf=0.25)
+    st.image(results[0].plot(), caption="Hasil Deteksi")
 
     # (Opsional) jangan hapus dulu file sementara agar YOLO bisa membaca de

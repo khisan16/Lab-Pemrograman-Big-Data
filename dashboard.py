@@ -83,16 +83,20 @@ if uploaded_file is not None:
 # Simpan sementara ke file
 temp_dir = tempfile.mkdtemp()
 file_path = os.path.join(temp_dir, uploaded_file.name)
-with open(file_path, "wb") as f:
-f.write(uploaded_file.read())
 
 ```
+# Pastikan file tersimpan sebelum prediksi
+with open(file_path, "wb") as f:
+    f.write(uploaded_file.getbuffer())
+
 # Jalankan YOLO
 try:
-    results = model.predict(source=file_path, conf=0.25)
+    results = model.predict(source=file_path, conf=0.25, verbose=False)
     result_image = results[0].plot()
 
-    # Tampilkan berdampingan
+    # ============================
+    # 🎭 Tampilan berdampingan
+    # ============================
     col1, col2 = st.columns(2)
     with col1:
         st.image(uploaded_file, caption="📸 Gambar Asli", use_container_width=True)
@@ -102,6 +106,6 @@ try:
 except Exception as e:
     st.error(f"Gagal melakukan deteksi: {e}")
 
-# Hapus folder sementara
+# Bersihkan folder sementara
 shutil.rmtree(temp_dir, ignore_errors=True)
 ```

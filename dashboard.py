@@ -54,28 +54,28 @@ if uploaded_file is not None and model_loaded:
     img = Image.open(uploaded_file)
     st.image(img, caption="Gambar yang diunggah", use_container_width=True)
 
-# ==========================
-# MODE DETEKSI OBJEK (YOLO)
-# ==========================
-if menu == "Deteksi Objek (YOLO)":
-    if yolo_model is None:
-        st.error("YOLO model belum dimuat.")
-    else:
-        with st.spinner("🔍 Sedang mendeteksi objek..."):
-            # Turunkan threshold confidence agar lebih sensitif
-            results = yolo_model(img, conf=0.1, iou=0.2)  # conf=0.1 untuk peka, iou=0.2 opsional
-
-            result_img = results[0].plot()  # hasil deteksi (gambar dengan box)
-            st.image(result_img, caption="Hasil Deteksi", use_container_width=True)
-
-            if len(results[0].boxes) > 0:
-                st.subheader("📦 Detil Objek Terdeteksi:")
-                for i, box in enumerate(results[0].boxes):
-                    cls_name = results[0].names[int(box.cls)]
-                    conf = float(box.conf)
-                    st.write(f"**Objek {i+1}:** {cls_name} ({conf:.2%})")
-            else:
-                st.info("Tidak ada objek terdeteksi pada gambar ini, coba unggah gambar lain atau perbesar area objek.")
+    # ==========================
+    # MODE DETEKSI OBJEK (YOLO)
+    # ==========================
+    if menu == "Deteksi Objek (YOLO)":
+        if yolo_model is None:
+            st.error("YOLO model belum dimuat.")
+        else:
+            with st.spinner("🔍 Sedang mendeteksi objek..."):
+                # Turunkan threshold confidence agar lebih sensitif
+                results = yolo_model(img, conf=0.1, iou=0.2)  # conf=0.1 untuk peka, iou=0.2 opsional
+    
+                result_img = results[0].plot()  # hasil deteksi (gambar dengan box)
+                st.image(result_img, caption="Hasil Deteksi", use_container_width=True)
+    
+                if len(results[0].boxes) > 0:
+                    st.subheader("📦 Detil Objek Terdeteksi:")
+                    for i, box in enumerate(results[0].boxes):
+                        cls_name = results[0].names[int(box.cls)]
+                        conf = float(box.conf)
+                        st.write(f"**Objek {i+1}:** {cls_name} ({conf:.2%})")
+                else:
+                    st.info("Tidak ada objek terdeteksi pada gambar ini, coba unggah gambar lain atau perbesar area objek.")
 
     # ==========================
     # MODE KLASIFIKASI GAMBAR

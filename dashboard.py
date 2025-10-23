@@ -9,7 +9,7 @@ import shutil
 # 🔧 Konfigurasi Halaman
 # ============================
 st.set_page_config(
-    page_title="Object Detection Dashboard (YOLOv8)",
+    page_title="Mari Mendeteksi Jenis Ubur-Ubur",
     page_icon="🪼",
     layout="wide",
 )

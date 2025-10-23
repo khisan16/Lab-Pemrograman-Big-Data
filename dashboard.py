@@ -5,74 +5,71 @@ import pandas as pd
 import os
 
 # ==========================
-# Import YOLO & TF
+# CEK & IMPORT YOLOv8
 # ==========================
 try:
     from ultralytics import YOLO
     yolov8_available = True
 except ImportError:
     yolov8_available = False
+    st.warning("❌ Modul 'ultralytics' belum terinstal. Jalankan: pip install ultralytics")
 
+# ==========================
+# CEK & IMPORT TensorFlow
+# ==========================
 try:
     import tensorflow as tf
     from tensorflow.keras.preprocessing import image
     tf_available = True
 except ImportError:
     tf_available = False
+    st.warning("❌ Modul 'tensorflow' belum terinstal. Jalankan: pip install tensorflow")
 
 # ==========================
-# Halaman Streamlit
+# KONFIGURASI STREAMLIT
 # ==========================
-st.set_page_config(
-    page_title="Dashboard YOLO & Klasifikasi Sensitif",
-    page_icon="🧠",
-    layout="wide",
-)
+st.set_page_config(page_title="Dashboard YOLO & Klasifikasi", page_icon="🧠", layout="wide")
 st.title("🧠 Image Classification & Object Detection (Sensitif)")
 
 # ==========================
-# Cek kelas YOLO sebelum load cached
-# ==========================
-if yolov8_available:
-    try:
-        model_check = YOLO("model/best.pt")
-        yolo_classes = model_check.names  # dict {0: 'class_name', ...}
-        st.sidebar.subheader("📌 Kelas YOLO (cek awal)")
-        df_yolo_check = pd.DataFrame(list(yolo_classes.items()), columns=["Index", "Nama Kelas"])
-        st.sidebar.table(df_yolo_check)
-    except Exception as e:
-        st.sidebar.warning(f"Gagal load YOLO untuk cek kelas: {e}")
-        yolo_classes = None
-else:
-    yolo_classes = None
-    st.sidebar.info("YOLOv8 tidak tersedia")
-
-# ==========================
-# Load Models dengan caching
+# LOAD MODEL DENGAN CACHE
 # ==========================
 @st.cache_resource
 def load_yolo_model(path="model/best.pt"):
+    if not yolov8_available:
+        return None
+    if not os.path.exists(path):
+        st.error(f"❌ File model YOLO tidak ditemukan di: {path}")
+        return None
     try:
-        yolo_model = YOLO(path)
-        return yolo_model
+        model = YOLO(path)
+        return model
     except Exception as e:
-        st.warning(f"❌ Gagal memuat YOLO: {e}")
+        st.error(f"❌ Gagal memuat YOLOv8: {e}")
         return None
 
 @st.cache_resource
 def load_classifier_model(path="model/hisan_model.h5"):
+    if not tf_available:
+        return None
+    if not os.path.exists(path):
+        st.error(f"❌ File model klasifikasi tidak ditemukan di: {path}")
+        return None
     try:
-        classifier_model = tf.keras.models.load_model(path)
-        return classifier_model
+        model = tf.keras.models.load_model(path)
+        return model
     except Exception as e:
-        st.warning(f"❌ Gagal memuat classifier: {e}")
+        st.error(f"❌ Gagal memuat model klasifikasi: {e}")
         return None
 
-yolo_model = load_yolo_model() if yolov8_available else None
-classifier_model = load_classifier_model() if tf_available else None
+# ==========================
+# LOAD MODEL
+# ==========================
+yolo_model = load_yolo_model()
+classifier_model = load_classifier_model()
 
 # ==========================
-# Load kelas TensorFlow (opsional)
+# LOAD LABEL KELAS TENSORFLOW (opsional)
 # ==========================
 classes_file = "model/classes.txt"
 if os.path.exists(classes_file):
@@ -82,17 +79,13 @@ else:
     tf_class_labels = None
 
 # ==========================
-# Sidebar Mode
+# SIDEBAR
 # ==========================
-menu = st.sidebar.selectbox(
-    "Pilih Mode:",
-    ["Deteksi Objek (YOLO Sensitif)", "Klasifikasi Gambar"]
-)
-
+menu = st.sidebar.selectbox("Pilih Mode:", ["Deteksi Objek (YOLO)", "Klasifikasi Gambar"])
 uploaded_file = st.file_uploader("📸 Unggah Gambar", type=["jpg", "jpeg", "png"])
 
 # ==========================
-# Fungsi Resize & Preprocess
+# FUNGSI BANTUAN
 # ==========================
 def prepare_image(img, size=(640, 640)):
     return img.resize(size)
@@ -105,39 +98,37 @@ def preprocess_for_classifier(img, target_shape):
     return img_array
 
 # ==========================
-# Deteksi Objek Sensitif
+# DETEKSI OBJEK DENGAN YOLO
 # ==========================
 def detect_objects(img):
     img_resized = prepare_image(img)
-    results = yolo_model(img_resized, conf=0.01, iou=0.05, verbose=False)
+    results = yolo_model(img_resized, conf=0.25, iou=0.45, verbose=False)
     return results
 
 # ==========================
-# Tampilkan daftar kelas YOLO di sidebar setelah load
+# TAMPILKAN KELAS YOLO
 # ==========================
 if yolo_model is not None:
-    st.sidebar.subheader("📌 Kelas YOLO (loaded)")
-    df_yolo_classes = pd.DataFrame(list(yolo_model.names.items()), columns=["Index", "Nama Kelas"])
-    st.sidebar.table(df_yolo_classes)
+    st.sidebar.subheader("📌 Kelas YOLO")
+    df_yolo = pd.DataFrame(list(yolo_model.names.items()), columns=["Index", "Nama Kelas"])
+    st.sidebar.table(df_yolo)
 
 # ==========================
-# Main Logic
+# BAGIAN UTAMA
 # ==========================
 if uploaded_file is not None:
     img = Image.open(uploaded_file)
     st.image(img, caption="Gambar yang diunggah", use_container_width=True)
 
-    # ======================
-    # Deteksi Objek YOLO
-    # ======================
-    if menu == "Deteksi Objek (YOLO Sensitif)":
+    # MODE YOLO
+    if menu == "Deteksi Objek (YOLO)":
         if yolo_model is None:
             st.warning("YOLOv8 tidak tersedia. Silakan cek requirements dan model best.pt.")
         else:
             with st.spinner("🔍 Sedang mendeteksi objek..."):
                 results = detect_objects(img)
                 result_img = results[0].plot()
-                st.image(result_img, caption="Hasil Deteksi (Sangat Sensitif)", use_container_width=True)
+                st.image(result_img, caption="Hasil Deteksi YOLO", use_container_width=True)
 
                 boxes = results[0].boxes
                 if len(boxes) > 0:
@@ -147,44 +138,24 @@ if uploaded_file is not None:
                         conf = float(box.conf)
                         st.write(f"**Objek {i+1}:** {cls_name} ({conf:.2%})")
                 else:
-                    st.info("Tidak ada objek terdeteksi. Coba unggah gambar lain atau pastikan objek terlihat jelas.")
+                    st.info("Tidak ada objek terdeteksi.")
 
-    # ======================
-    # Klasifikasi Gambar
-    # ======================
+    # MODE KLASIFIKASI
     elif menu == "Klasifikasi Gambar":
         if classifier_model is None:
-            st.warning("Model klasifikasi tidak tersedia. Silakan cek path hisan_model.h5.")
+            st.warning("Model klasifikasi tidak tersedia.")
         else:
-            # Tampilkan jumlah kelas & nama kelas TensorFlow
-            num_classes = classifier_model.output_shape[1]
-            st.info(f"Jumlah kelas TensorFlow: {num_classes}")
-            if tf_class_labels:
-                st.info(f"Nama kelas TensorFlow: {tf_class_labels}")
-            else:
-                st.info(f"Kelas (index): {list(range(num_classes))}")
+            with st.spinner("🧠 Sedang mengklasifikasikan..."):
+                target_size = classifier_model.input_shape[1:3]
+                img_array = preprocess_for_classifier(img, target_size)
+                prediction = classifier_model.predict(img_array)
+                class_index = int(np.argmax(prediction))
+                confidence = float(np.max(prediction))
 
-            with st.spinner("🧠 Sedang melakukan klasifikasi..."):
-                try:
-                    target_size = classifier_model.input_shape[1:3]
-                    img_array = preprocess_for_classifier(img, target_size)
-                    prediction = classifier_model.predict(img_array)
-                    class_index = int(np.argmax(prediction))
-                    confidence = float(np.max(prediction))
-
-                    label = tf_class_labels[class_index] if tf_class_labels else class_index
-                    st.success(f"### 🏷️ Kelas Prediksi: {label}")
-                    st.progress(confidence)
-                    st.caption(f"Probabilitas: {confidence:.2%}")
-
-                    if prediction.shape[1] > 1:
-                        st.subheader("📊 Confidence per Kelas")
-                        for i, conf in enumerate(prediction[0]):
-                            lbl = tf_class_labels[i] if tf_class_labels else i
-                            st.write(f"**{lbl}**: {conf:.2%}")
-
-                except Exception as e:
-                    st.error(f"Terjadi kesalahan saat klasifikasi: {e}")
+                label = tf_class_labels[class_index] if tf_class_labels else class_index
+                st.success(f"### 🏷️ Prediksi: {label}")
+                st.progress(confidence)
+                st.caption(f"Probabilitas: {confidence:.2%}")
 
 else:
-    st.info("⬆️ Silakan unggah gambar terlebih dahulu untuk memulai analisis.")
+    st.info("⬆️ Silakan unggah gambar terlebih dahulu.")

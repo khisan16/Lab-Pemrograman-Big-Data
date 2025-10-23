@@ -14,6 +14,7 @@ MODEL_PATH = "model/best.pt"
 def load_model():
     try:
         model = YOLO(MODEL_PATH)
+        st.success
         return model
     except Exception as e:
         st.error(f"Gagal memuat model: {e}")

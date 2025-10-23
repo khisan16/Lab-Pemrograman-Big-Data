@@ -3,32 +3,30 @@ from ultralytics import YOLO
 import tensorflow as tf
 from tensorflow.keras.preprocessing import image
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 # ==========================
 # Konfigurasi Halaman
 # ==========================
 st.set_page_config(
-    page_title="Dashboard YOLO & Klasifikasi",
+    page_title="Dashboard YOLO & Klasifikasi Sensitif",
     page_icon="🧠",
     layout="wide",
 )
 
 # ==========================
-# Load Models (cached agar cepat)
+# Load Models
 # ==========================
 @st.cache_resource
 def load_models():
     try:
-        # Load YOLO model
-        yolo_model = YOLO("model/best.pt")  
+        yolo_model = YOLO("model/best.pt")  # YOLO object detection
     except Exception as e:
         st.error(f"❌ Gagal memuat YOLO model: {e}")
         yolo_model = None
 
     try:
-        # Load TensorFlow classification model
-        classifier = tf.keras.models.load_model("model/hisan_model.h5")  
+        classifier = tf.keras.models.load_model("model/hisan_model.h5")  # Classification
     except Exception as e:
         st.error(f"❌ Gagal memuat classifier model: {e}")
         classifier = None
@@ -41,45 +39,56 @@ model_loaded = yolo_model is not None or classifier is not None
 # ==========================
 # UI Utama
 # ==========================
-st.title("🧠 Image Classification & Object Detection App")
+st.title("🧠 Image Classification & Object Detection (Sensitif)")
 
 menu = st.sidebar.selectbox(
     "Pilih Mode:",
-    ["Deteksi Objek (YOLO)", "Klasifikasi Gambar"],
+    ["Deteksi Objek (YOLO Sensitif)", "Klasifikasi Gambar"],
 )
 
 uploaded_file = st.file_uploader("📸 Unggah Gambar", type=["jpg", "jpeg", "png"])
 
+# ==========================
+# Fungsi resize untuk YOLO
+# ==========================
+def prepare_image(img, size=(640, 640)):
+    return img.resize(size)
+
+# ==========================
+# Deteksi Objek Sensitif
+# ==========================
+def detect_objects(img):
+    img_resized = prepare_image(img)
+    # Sangat peka: conf rendah, iou rendah
+    results = yolo_model(img_resized, conf=0.01, iou=0.05, verbose=False)
+    return results
+
+# ==========================
+# Main Logic
+# ==========================
 if uploaded_file is not None and model_loaded:
     img = Image.open(uploaded_file)
     st.image(img, caption="Gambar yang diunggah", use_container_width=True)
 
-    # ==========================
-    # MODE DETEKSI OBJEK (YOLO)
-    # ==========================
-    if menu == "Deteksi Objek (YOLO)":
+    if menu == "Deteksi Objek (YOLO Sensitif)":
         if yolo_model is None:
             st.error("YOLO model belum dimuat.")
         else:
             with st.spinner("🔍 Sedang mendeteksi objek..."):
-                # Turunkan threshold confidence agar lebih sensitif
-                results = yolo_model(img, conf=0.1, iou=0.2)  # conf=0.1 untuk peka, iou=0.2 opsional
-    
-                result_img = results[0].plot()  # hasil deteksi (gambar dengan box)
-                st.image(result_img, caption="Hasil Deteksi", use_container_width=True)
-    
-                if len(results[0].boxes) > 0:
-                    st.subheader("📦 Detil Objek Terdeteksi:")
-                    for i, box in enumerate(results[0].boxes):
+                results = detect_objects(img)
+                result_img = results[0].plot()  # YOLO default plot
+                st.image(result_img, caption="Hasil Deteksi (Sangat Sensitif)", use_container_width=True)
+
+                boxes = results[0].boxes
+                if len(boxes) > 0:
+                    st.subheader("📦 Detil Objek Terdeteksi (Sangat Sensitif):")
+                    for i, box in enumerate(boxes):
                         cls_name = results[0].names[int(box.cls)]
                         conf = float(box.conf)
                         st.write(f"**Objek {i+1}:** {cls_name} ({conf:.2%})")
                 else:
-                    st.info("Tidak ada objek terdeteksi pada gambar ini, coba unggah gambar lain atau perbesar area objek.")
+                    st.info("Tidak ada objek terdeteksi sama sekali (coba unggah gambar lain).")
 
-    # ==========================
-    # MODE KLASIFIKASI GAMBAR
-    # ==========================
     elif menu == "Klasifikasi Gambar":
         if classifier is None:
             st.error("Classifier model belum dimuat.")

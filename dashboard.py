@@ -125,6 +125,28 @@ section.main, .stApp {
   overflow: hidden;
 }
 
+.hero-box {
+  background: linear-gradient(135deg, #7a32ff 0%, #44e0ff 100%);
+  border-radius: 24px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+  padding: 40px 20px;
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.hero-title {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.hero-sub {
+  font-size: 22px;
+  font-weight: 600;
+  color: #eaf9ff;
+}
+
 .hero-title {
   font-size: 36px;
   font-weight: 800;
@@ -224,10 +246,17 @@ if st.session_state.model_loaded:
 # ---------- HOME ----------
 def page_home():
     st.markdown("<div class='hero-container'>", unsafe_allow_html=True)
-    # ikon ubur-ubur lucu (placeholder online transparan)
+
+    # Ubur-ubur lucu online (ikon transparan)
     st.markdown("<img src='https://cdn-icons-png.flaticon.com/512/616/616408.png' class='jelly-icon'>", unsafe_allow_html=True)
-    st.markdown("<div class='hero-title'>HALO! SELAMAT DATANG</div>", unsafe_allow_html=True)
-    st.markdown("<div class='hero-sub'>MAU NGAPAIN NIH?</div>", unsafe_allow_html=True)
+
+    # Judul di dalam kotak gradasi
+    st.markdown("""
+    <div class='hero-box'>
+        <div class='hero-title'>HALO! SELAMAT DATANG</div>
+        <div class='hero-sub'>MAU NGAPAIN NIH?</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
@@ -235,8 +264,9 @@ def page_home():
             nav_to("gallery")
         if st.button("DETEKSI JENIS UBUR-UBUR", key="btn_detect", use_container_width=True):
             nav_to("detect")
-    st.markdown("</div>", unsafe_allow_html=True)
 
+    st.markdown("</div>", unsafe_allow_html=True)
+    
 # ---------- GALLERY ----------
 def page_gallery():
     st.markdown("<div style='display:flex; justify-content:space-between; align-items:center;'>"

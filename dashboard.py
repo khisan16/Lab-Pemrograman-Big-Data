@@ -43,13 +43,13 @@ SPECIES = [
     },
     {
         "key": "mauve-stringer-jellyfish",
-        "labels": ["mauve-stringer-jellyfish.jpg","mauve-stringer.jpg"],
+        "labels": ["mauve-stringer-jellyfish.jpg","mauve-stringer-jellyfish.jpg"],
         "title": "Mauve Stringer Jellyfish",
         "desc": "• Bentuk: Memiliki tentakel panjang menyerupai string.\n• Ciri khas: Warna ungu/mauve yang kontras.\n• Ukuran: Tentakel yang panjang dapat mencapai jarak yang signifikan."
     },
     {
         "key": "lions-mane-jellyfish",
-        "labels": ["lions-mane-jellyfish.jpg", "lion-mane-jellyfish.jpg","lion's-mane-jellyfish.jpg","lion’s-mane-jellyfish.jpg"],
+        "labels": ["lions-mane-jellyfish.jpg", "lions-mane-jellyfish.jpg","lion's-mane-jellyfish.jpg","lion’s-mane-jellyfish.jpg"],
         "title": "Lion's Mane Jellyfish",
         "desc": "• Bentuk: Lonceng besar dengan tentakel sangat panjang.\n• Ciri khas: Mirip surai singa (banyak tentakel).\n• Potensi bahaya: Bisa menyebabkan sengatan menyakitkan."
     },

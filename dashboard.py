@@ -443,7 +443,7 @@ elif st.session_state.page == "gallery":
 elif st.session_state.page == "detail":
     page_detail()
 elif st.session_state.page == "detect":
-    page_detect()
+    page_detection()
 else:
     page_home()
 

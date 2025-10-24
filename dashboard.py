@@ -44,7 +44,7 @@ SPECIES = [
         "fallback": "https://upload.wikimedia.org/wikipedia/commons/b/b0/Catostylus_mosaicus_-_Blue_blubber_jellyfish.jpg"
     },
     {
-        "key": "mauve-stringer-jellyfish",
+        "key": "mauve-stinger-jellyfish",
         "labels": ["mauve-stinger-jellyfish.jpg","mauve_stinger_jellyfish.jpg"],
         "title": "Mauve Stinger Jellyfish",
         "desc": "• Tentakel panjang menyerupai tali.\n• Warna ungu muda yang indah.\n• Mampu memancarkan cahaya di malam hari.",

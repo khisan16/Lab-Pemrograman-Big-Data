@@ -45,7 +45,7 @@ SPECIES = [
     },
     {
         "key": "mauve-stringer-jellyfish",
-        "labels": ["mauve-stringer-jellyfish.jpg","mauve_stringer_jellyfish.jpg"],
+        "labels": ["mauve-stinger-jellyfish.jpg","mauve_stinger_jellyfish.jpg"],
         "title": "Mauve Stinger Jellyfish",
         "desc": "• Tentakel panjang menyerupai tali.\n• Warna ungu muda yang indah.\n• Mampu memancarkan cahaya di malam hari.",
         "fallback": "https://upload.wikimedia.org/wikipedia/commons/2/20/Pelagia_noctiluca_%28Mauve_Stinger%29.jpg"

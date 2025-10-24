@@ -373,38 +373,20 @@ def page_detection():
         results = model.predict(temp_path)
         elapsed_time = time.time() - start_time
 
-# Show original image left, detection result right
-        col_left, col_right = st.columns([1,1])
-        with col_left:
-            st.markdown("**Gambar Asli**")
-            st.image(fpath, use_container_width=False, width=250)
+        # Ambil hasil
+        detected_img = results[0].plot()  # Gambar dengan bounding box
+        detected_pil = Image.fromarray(detected_img[:, :, ::-1])
+        labels = results[0].boxes.cls
+        confs = results[0].boxes.conf
 
-# If model available, run predict
-if st.session_state.model_loaded:
-    try:
-        with st.spinner("Menjalankan deteksi..."):
-            t0 = time.time()
-            results = model.predict(source=fpath, conf=conf, verbose=False)
-            elapsed = time.time() - t0
-        # plot result (returns np array or PIL)
-        result_img = results[0].plot()
-        boxes = results[0].boxes
-        # prepare stats & table
-        data = []
-        for b in boxes:
-            # b.cls and b.conf indexing
-            try:
-                cls_id = int(b.cls[0])
-                confv = float(b.conf[0])
-                label = model.names[cls_id] if hasattr(model, "names") else str(cls_id)
-            except Exception:
-                label = "unknown"
-                confv = float(b.conf[0]) if hasattr(b, "conf") else 0.0
-            data.append({"Label": label, "Confidence": round(confv,3)})
-        df = pd.DataFrame(data)
-        with col_right:
-            st.markdown("**Hasil Deteksi**")
-            st.image(result_img, use_container_width=False, width=250)
+        # Tampilkan hasil
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("<h4 style='color:#f2faff;'>Gambar Asli</h4>", unsafe_allow_html=True)
+            st.image(image, use_container_width=True)
+        with col2:
+            st.markdown("<h4 style='color:#f2faff;'>Hasil Deteksi</h4>", unsafe_allow_html=True)
+            st.image(detected_pil, use_container_width=True)
 
         # Statistik & Tabel sejajar
         st.markdown(

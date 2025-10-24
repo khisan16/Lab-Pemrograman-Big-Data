@@ -302,7 +302,7 @@ def page_detail():
     left, right = st.columns([1,2])
     with left:
         if s.get("img_path"):
-            st.image(s["img_path"], use_container_width=True)
+            st.image(s["img_path"], use_container_width=False, width=250)
         else:
             st.image("https://via.placeholder.com/380x380.png?text=No+Image", use_column_width=True)
     with right:
@@ -337,7 +337,7 @@ def page_detect():
         col_left, col_right = st.columns([1,1])
         with col_left:
             st.markdown("**Gambar Asli**")
-            st.image(fpath, use_container_width=True)
+            st.image(fpath, use_container_width=False, width=250)
 
         # If model available, run predict
         if st.session_state.model_loaded:
@@ -364,7 +364,7 @@ def page_detect():
                 df = pd.DataFrame(data)
                 with col_right:
                     st.markdown("**Hasil Deteksi**")
-                    st.image(result_img, use_container_width=True)
+                    st.image(result_img, use_container_width=False, width=250)
                 # Below: stats and table
                 st.markdown("---")
                 st.subheader("📊 Statistik Deteksi")

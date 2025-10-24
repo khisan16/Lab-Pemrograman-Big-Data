@@ -91,8 +91,6 @@ def select_species(key):
 # ---------------------------
 # CSS / Styling
 # ---------------------------
-st.set_page_config(page_title="Ubur-Ubur: Edu & Deteksi", page_icon="🪼", layout="wide")
-
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
@@ -101,11 +99,19 @@ html, body, [class*="css"]  {
   font-family: 'Poppins', sans-serif !important;
 }
 
+/* Gaya umum latar belakang laut */
 body {
-  background: radial-gradient(circle at top left, #1a1247, #0a0829);
+  background: linear-gradient(180deg, #0d1b4a 0%, #102a7a 40%, #1b8fbf 100%);
   color: #f5f6fa;
+  background-attachment: fixed;
 }
 
+/* Hapus warna putih default kontainer Streamlit */
+section.main, .stApp {
+  background: transparent !important;
+}
+
+/* Hero card tetap punya gradasi ubur-ubur */
 .hero-container {
   position: relative;
   margin: 80px auto;
@@ -159,6 +165,19 @@ body {
   right: 20px;
   width: 100px;
   height: auto;
+}
+
+/* Tambahan efek halus */
+.stButton>button {
+  border-radius: 20px;
+  background: rgba(255,255,255,0.1);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  transition: 0.3s ease;
+}
+.stButton>button:hover {
+  background: rgba(255,255,255,0.3);
+  color: #1b003f;
 }
 </style>
 """, unsafe_allow_html=True)

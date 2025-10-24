@@ -95,31 +95,71 @@ st.set_page_config(page_title="Ubur-Ubur: Edu & Deteksi", page_icon="🪼", layo
 
 st.markdown("""
 <style>
-body {background: linear-gradient(90deg, #0f0c29, #302b63, #24243e); color: #e6eef2;}
-.header-hero {
-  border-radius: 18px;
-  padding: 36px;
-  background: linear-gradient(135deg,#8a2be2 0%, #66d9ff 60%);
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
+
+html, body, [class*="css"]  {
+  font-family: 'Poppins', sans-serif !important;
+}
+
+body {
+  background: radial-gradient(circle at top left, #1a1247, #0a0829);
+  color: #f5f6fa;
+}
+
+.hero-container {
+  position: relative;
+  margin: 80px auto;
+  width: 80%;
+  max-width: 700px;
+  background: linear-gradient(135deg, #7a32ff 0%, #44e0ff 100%);
+  border-radius: 24px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+  padding: 60px 40px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.hero-title {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.hero-sub {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 30px;
+  color: #eaf9ff;
+}
+
+.hero-btn {
+  display: inline-block;
+  margin: 8px;
+  padding: 14px 26px;
+  border: none;
+  border-radius: 30px;
+  background: rgba(255,255,255,0.2);
   color: white;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
-.hero-title {font-size:34px; font-weight:800; text-align:center;}
-.hero-sub {font-size:22px; text-align:center; margin-top:8px; opacity:0.95;}
-.btn-hero {
-  display:inline-block; padding:12px 26px; border-radius:30px; margin:12px;
-  background: linear-gradient(90deg,#6f2bdc,#9fffd9); color:#091217; font-weight:700;
-  border:none; cursor:pointer;
+.hero-btn:hover {
+  background: white;
+  color: #4e00c2;
+  transform: translateY(-2px);
 }
-.card {
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-  padding:12px; border-radius:14px; text-align:center; box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+
+.jelly-icon {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 100px;
+  height: auto;
 }
-.spec-img {border-radius:12px; width:160px; height:160px; object-fit:cover; border:4px solid rgba(255,255,255,0.04);}
-.grid-title {font-weight:800; font-size:24px; color:#fff; margin-bottom:10px; text-decoration: underline;}
-.back-btn {background:#fff; color:#2b1055; padding:8px 12px; border-radius:8px; font-weight:700;}
-.small-muted {color:#b8c4cc; font-size:14px;}
-.results-left {padding-right:20px;}
-.table-card {background: rgba(255,255,255,0.02); padding:10px; border-radius:10px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -164,29 +204,19 @@ if st.session_state.model_loaded:
 
 # ---------- HOME ----------
 def page_home():
-    c1, c2 = st.columns([2,1])
-    with c1:
-        st.markdown("<div class='header-hero'>", unsafe_allow_html=True)
-        st.markdown("<div class='hero-title'>HALO! SELAMAT DATANG</div>", unsafe_allow_html=True)
-        st.markdown("<div class='hero-sub'>MAU NGAPAIN NIH?</div>", unsafe_allow_html=True)
-        st.markdown("<div style='text-align:center; margin-top:18px'>", unsafe_allow_html=True)
-        if st.button("MENGENAL JENIS-JENIS UBUR-UBUR", key="btn_gallery"):
+    st.markdown("<div class='hero-container'>", unsafe_allow_html=True)
+    # ikon ubur-ubur lucu (placeholder online transparan)
+    st.markdown("<img src='https://cdn-icons-png.flaticon.com/512/616/616408.png' class='jelly-icon'>", unsafe_allow_html=True)
+    st.markdown("<div class='hero-title'>HALO! SELAMAT DATANG</div>", unsafe_allow_html=True)
+    st.markdown("<div class='hero-sub'>MAU NGAPAIN NIH?</div>", unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        if st.button("MENGENAL JENIS-JENIS UBUR-UBUR", key="btn_gallery", use_container_width=True):
             nav_to("gallery")
-        if st.button("DETEKSI JENIS UBUR-UBUR", key="btn_detect"):
+        if st.button("DETEKSI JENIS UBUR-UBUR", key="btn_detect", use_container_width=True):
             nav_to("detect")
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-    with c2:
-        # show a cute jellyfish (use first available species image)
-        first_img = None
-        for s in SPECIES:
-            if s.get("img_path"):
-                first_img = s["img_path"]
-                break
-        if first_img:
-            st.image(first_img, width=280)
-        else:
-            st.markdown("![jelly](https://via.placeholder.com/280x200.png?text=Jellyfish)")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ---------- GALLERY ----------
 def page_gallery():

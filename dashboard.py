@@ -171,3 +171,37 @@ def page_detect():
     uploaded = st.file_uploader("Unggah gambar ubur-ubur", type=["jpg","jpeg","png"])
     if uploaded:
         temp = tempfile.mkdtemp()
+        fpath = os.path.join(temp, uploaded.name)
+        with open(fpath, "wb") as f:
+            f.write(uploaded.getbuffer())
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**Gambar Asli**")
+            st.image(fpath, use_container_width=True)
+        with c2:
+            if YOLO_AVAILABLE:
+                st.markdown("**Hasil Deteksi**")
+                st.image("https://via.placeholder.com/600x400.png?text=Hasil+Deteksi", use_container_width=True)
+            else:
+                st.warning("Model belum dimuat.")
+        shutil.rmtree(temp, ignore_errors=True)
+    if st.button("⬅️ Kembali"):
+        nav_to("home")
+
+# ---------------------------
+# ROUTER
+# ---------------------------
+page_map = {
+    "home": page_home,
+    "gallery": page_gallery,
+    "detail": page_detail,
+    "detect": page_detect
+}
+page_map.get(st.session_state.page, page_home)()
+
+# ---------------------------
+# FOOTER
+# ---------------------------
+st.markdown("<hr style='opacity:0.3;'>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center; color:#cfe3ff;'>Aplikasi edukasi ubur-ubur — dibuat oleh HISAN</div>", unsafe_allow_html=True)

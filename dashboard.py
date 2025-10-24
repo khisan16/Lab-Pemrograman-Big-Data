@@ -111,6 +111,12 @@ section.main, .stApp {
   background: transparent !important;
 }
 
+.stImage img {
+        height: 220px !important;
+        object-fit: cover;
+        border-radius: 15px;
+    }
+
 .hero-box {
   background: linear-gradient(135deg, #7a32ff 0%, #44e0ff 100%);
   border-radius: 24px;

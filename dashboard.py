@@ -451,4 +451,4 @@ else:
 # Footer credit
 # ---------------------------
 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
-st.markdown("<div style='text-align:center; color:#bfc9d3'>Aplikasi edukasi & demo deteksi ubur-ubur — dibuat oleh HISAN</div>", unsafe_allow_html=True) 
+st.markdown("<div style='text-align:center; color:#bfc9d3'>Aplikasi edukasi & deteksi jenis ubur-ubur — dibuat oleh HISAN</div>", unsafe_allow_html=True) 

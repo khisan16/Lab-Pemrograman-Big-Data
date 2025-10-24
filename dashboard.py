@@ -49,8 +49,8 @@ st.markdown("""
 # ============================
 # 🪼 Header
 # ============================
-st.title("🪼 Object Detection Dashboard (YOLOv8)")
-st.markdown("**Deteksi Objek Otomatis pada Gambar Menggunakan Model YOLOv8**")
+st.title("🪼 Mari Mendeteksi Jenis Ubur-Ubur")
+st.markdown("**Masukkan gambar ubur-ubur disini dan kamu akan tahu apa jenisnya**")
 
 # ============================
 # 📦 Load Model

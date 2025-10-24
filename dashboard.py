@@ -259,35 +259,42 @@ def page_home():
 
     st.markdown("</div>", unsafe_allow_html=True)
     
-# ---------- GALLERY ----------
+# ---------- GALERI ----------
 def page_gallery():
-    st.markdown("<div style='display:flex; justify-content:space-between; align-items:center;'>"
-                f"<h2 class='grid-title'>MARI MENGENAL JENIS-JENIS UBUR-UBUR</h2>"
-                f"<button class='back-btn' onclick=\"window.location.href='?nav=home'\">Back</button>"
-                "</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<h2 style='text-align:center; color:#ffffff; margin-bottom:20px;'>MARI MENGENAL JENIS-JENIS UBUR-UBUR</h2>",
+        unsafe_allow_html=True,
+    )
 
-    # grid 3 columns x 2 rows
+    # Tombol Back (pakai on_click agar konsisten)
+    back_col, _ = st.columns([1, 6])
+    with back_col:
+        st.button("⬅️ Back", key="back_to_home", on_click=nav_to, args=("home",))
+
+    # Grid 3 kolom
     cols = st.columns(3)
-    idx = 0
-    for r in range(2):
-        for c in range(3):
-            if idx >= len(SPECIES):
-                break
-            s = SPECIES[idx]
-            with cols[c]:
-                st.markdown("<div class='card'>", unsafe_allow_html=True)
-                if s.get("img_path"):
-                    st.image(s["img_path"], caption=None, use_container_width=False, width=160)
-                else:
-                    st.image("https://via.placeholder.com/160.png?text=No+Image", width=160)
-                st.markdown(f"**{s['title']}**")
-                # clickable button to open detail
-                if st.button("Lihat Detail", key=f"open_{s['key']}"):
-                    select_species(s['key'])
-                st.markdown("</div>", unsafe_allow_html=True)
-            idx += 1
+    for idx, s in enumerate(SPECIES):
+        col = cols[idx % 3]
+        with col:
+            st.markdown("<div style='text-align:center; padding:12px;'>", unsafe_allow_html=True)
 
-    st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
+            img_src = s.get("img_path") or "https://via.placeholder.com/300x300.png?text=No+Image"
+            st.image(img_src, use_container_width=False, width=220)
+
+            st.markdown(
+                f"<h4 style='color:#eaf9ff; margin-top:10px; font-family:Poppins, sans-serif;'>{s['title']}</h4>",
+                unsafe_allow_html=True,
+            )
+
+            # tombol lihat detail pakai on_click untuk set selected + pindah halaman
+            st.button(
+                "Lihat Detail",
+                key=f"btn_{s['key']}",
+                on_click=select_species,
+                args=(s['key'],)
+            )
+
+            st.markdown("</div>", unsafe_allow_html=True)
 
 # ---------- DETAIL ----------
 def page_detail():
@@ -296,33 +303,35 @@ def page_detail():
     s = next((x for x in SPECIES if x['key'] == key), None)
     if s is None:
         st.error("Spesies tidak ditemukan. Kembali ke Galeri.")
-        if st.button("Back to Gallery"):
-            nav_to("gallery")
+        st.button("⬅️ Kembali ke Galeri", key="back_to_gallery_missing", on_click=nav_to, args=("gallery",))
         return
 
-    # tombol back di kiri atas
-    top_col, _ = st.columns([1,4])
-    with top_col:
-        if st.button("⬅️ Back", key="back_from_detail"):
-            nav_to("gallery")
+    # Tombol kembali (kiri atas) — on_click lebih andal
+    st.button("⬅️ Back", key="back_from_detail", on_click=nav_to, args=("gallery",))
 
     # layout dua kolom: gambar di kiri, teks di kanan
-    left, right = st.columns([1,2])
+    left, right = st.columns([1, 2])
     with left:
-        if s.get("img_path"):
-            st.image(s["img_path"], use_container_width=False, width=250)
-        else:
-            st.image("https://via.placeholder.com/380x380.png?text=No+Image", use_column_width=True)
+        img_src = s.get("img_path") or "https://via.placeholder.com/380x380.png?text=No+Image"
+        st.image(img_src, use_container_width=False, width=300)
 
     with right:
-        st.markdown(f"<h2 style='color:#ffffff; margin-bottom:10px;'>{s['title']}</h2>", unsafe_allow_html=True)
-        
-        # Format poin-poin agar tampil ke bawah dengan warna lebih terang
-        desc_lines = s.get('desc', 'Deskripsi belum tersedia.').split("•")
-        formatted_desc = "".join(
-            [f"<li style='margin-bottom:6px; color:#eaf9ff;'>{line.strip()}</li>" for line in desc_lines if line.strip()]
-        )
-        st.markdown(f"<ul style='list-style-type:disc; padding-left:20px;'>{formatted_desc}</ul>", unsafe_allow_html=True)
+        # Judul cerah
+        st.markdown(f"<h2 style='color:#ffffff; margin-bottom:6px;'>{s['title']}</h2>", unsafe_allow_html=True)
+
+        # Ubah deskripsi menjadi list poin ke bawah
+        raw_desc = s.get('desc', '')
+        # split by bullet marker; dukung format "• " atau newline
+        if "•" in raw_desc:
+            parts = [p.strip() for p in raw_desc.split("•") if p.strip()]
+        else:
+            parts = [p.strip() for p in raw_desc.split("\n") if p.strip()]
+
+        if parts:
+            list_items = "".join([f"<li style='margin-bottom:8px; color:#eaf9ff;'>{p}</li>" for p in parts])
+            st.markdown(f"<ul style='padding-left:18px;'>{list_items}</ul>", unsafe_allow_html=True)
+        else:
+            st.write(s.get('desc', 'Deskripsi belum tersedia.'))
 
 # ---------- DETECT ----------
 def page_detect():

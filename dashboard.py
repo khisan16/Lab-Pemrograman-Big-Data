@@ -300,20 +300,29 @@ def page_detail():
             nav_to("gallery")
         return
 
+    # tombol back di kiri atas
     top_col, _ = st.columns([1,4])
     with top_col:
         if st.button("⬅️ Back", key="back_from_detail"):
             nav_to("gallery")
 
+    # layout dua kolom: gambar di kiri, teks di kanan
     left, right = st.columns([1,2])
     with left:
         if s.get("img_path"):
             st.image(s["img_path"], use_container_width=False, width=250)
         else:
             st.image("https://via.placeholder.com/380x380.png?text=No+Image", use_column_width=True)
+
     with right:
-        st.markdown(f"### {s['title']}")
-        st.markdown(f"<div class='small-muted'>{s.get('desc','Deskripsi belum tersedia.')}</div>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:#ffffff; margin-bottom:10px;'>{s['title']}</h2>", unsafe_allow_html=True)
+        
+        # Format poin-poin agar tampil ke bawah dengan warna lebih terang
+        desc_lines = s.get('desc', 'Deskripsi belum tersedia.').split("•")
+        formatted_desc = "".join(
+            [f"<li style='margin-bottom:6px; color:#eaf9ff;'>{line.strip()}</li>" for line in desc_lines if line.strip()]
+        )
+        st.markdown(f"<ul style='list-style-type:disc; padding-left:20px;'>{formatted_desc}</ul>", unsafe_allow_html=True)
 
 # ---------- DETECT ----------
 def page_detect():

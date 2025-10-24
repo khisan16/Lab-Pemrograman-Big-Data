@@ -379,18 +379,44 @@ def page_detection():
         labels = results[0].boxes.cls
         confs = results[0].boxes.conf
 
-        # Tampilkan hasil
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("<h4 style='color:#f2faff;'>Gambar Asli</h4>", unsafe_allow_html=True)
-            st.image(image, use_container_width=True)
-        with col2:
-            st.markdown("<h4 style='color:#f2faff;'>Hasil Deteksi</h4>", unsafe_allow_html=True)
-            st.image(detected_pil, use_container_width=True)
+        # --------------------------
+        # Tampilkan hasil (lebih proporsional)
+        # --------------------------
+        st.markdown("""
+        <style>
+        .image-box {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            margin-top: 10px;
+            margin-bottom: 30px;
+        }
+        .image-box img {
+            border-radius: 15px;
+            max-width: 420px;
+            height: auto;
+            object-fit: contain;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
-        # Statistik & Tabel sejajar
+        st.markdown("<div class='image-box'>", unsafe_allow_html=True)
+        st.markdown("<div><h4 style='color:#f2faff; text-align:center;'>Gambar Asli</h4>", unsafe_allow_html=True)
+        st.image(image, width=420)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("<div><h4 style='color:#f2faff; text-align:center;'>Hasil Deteksi</h4>", unsafe_allow_html=True)
+        st.image(detected_pil, width=420)
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # --------------------------
+        # Statistik Deteksi
+        # --------------------------
         st.markdown(
-            "<h3 style='color:#d7f3ff; margin-top:25px;'>📊 Statistik Deteksi</h3>",
+            "<h3 style='color:#d7f3ff; margin-top:10px;'>📊 Statistik Deteksi</h3>",
             unsafe_allow_html=True
         )
 

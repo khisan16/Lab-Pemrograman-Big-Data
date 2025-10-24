@@ -346,14 +346,14 @@ def page_detail():
 
 # ---------- DETEKSI ----------
 def page_detection():
-import cv2
-import os
-import time
-import pandas as pd
-from PIL import Image
-import streamlit as st
-
-```
+    import cv2
+    import os
+    import time
+    import pandas as pd
+    from PIL import Image
+    import streamlit as st
+    ...
+    
 st.markdown(
     "<h2 style='text-align:center; color:#eaf9ff; margin-bottom:20px;'>Deteksi Jenis Ubur-Ubur</h2>",
     unsafe_allow_html=True,

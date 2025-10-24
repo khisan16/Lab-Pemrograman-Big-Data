@@ -344,94 +344,86 @@ def page_detail():
         else:
             st.write(s.get('desc', 'Deskripsi belum tersedia.'))
 
-# ---------- DETEKSI ----------
-def page_detection():
-    st.markdown(
-        "<h2 style='text-align:center; color:#eaf9ff; margin-bottom:20px;'>Deteksi Jenis Ubur-Ubur</h2>",
-        unsafe_allow_html=True,
-    )
+# ---------- DETECT ----------
+def page_detect():
+    st.markdown("<div style='display:flex; justify-content:space-between; align-items:center;'>"
+                f"<h2 class='grid-title'>Deteksi Jenis Ubur-Ubur</h2>"
+                f"<button class='back-btn' onclick=\"window.location.href='?nav=home'\">Back</button>"
+                "</div>", unsafe_allow_html=True)
 
-    # Tombol Back (berfungsi kembali ke home)
-    back_col, _ = st.columns([1, 5])
-    with back_col:
-        st.button("⬅️ Back", key="back_from_detection", on_click=nav_to, args=("home",))
+    st.sidebar.header("Pengaturan Deteksi")
+    conf = st.sidebar.slider("Confidence Threshold", 0.05, 1.0, st.session_state.conf_thres, 0.05)
+    st.session_state.conf_thres = conf
 
-    uploaded_file = st.file_uploader(
-        "Unggah gambar untuk deteksi",
-        type=["jpg", "jpeg", "png"],
-        help="Limit 200MB per file • JPG, JPEG, PNG"
-    )
+    uploaded_file = st.file_uploader("Unggah gambar untuk deteksi", type=["jpg","jpeg","png"])
 
     if uploaded_file:
-        image = Image.open(uploaded_file)
-        temp_path = os.path.join("temp", uploaded_file.name)
-        os.makedirs("temp", exist_ok=True)
-        image.save(temp_path)
+        temp_dir = tempfile.mkdtemp()
+        fpath = os.path.join(temp_dir, uploaded_file.name)
+        with open(fpath, "wb") as f:
+            f.write(uploaded_file.getbuffer())
 
-        # Proses deteksi YOLO
-        start_time = time.time()
-        results = model.predict(temp_path)
-        elapsed_time = time.time() - start_time
+        if not os.path.exists(fpath):
+            st.error("Terjadi kesalahan saat menyimpan file. Coba unggah ulang.")
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return
 
-        # Ambil hasil
-        detected_img = results[0].plot()  # Gambar dengan bounding box
-        detected_pil = Image.fromarray(detected_img[:, :, ::-1])
-        labels = results[0].boxes.cls
-        confs = results[0].boxes.conf
+        # Show original image left, detection result right
+        col_left, col_right = st.columns([1,1])
+        with col_left:
+            st.markdown("**Gambar Asli**")
+            st.image(fpath, use_container_width=False, width=250)
 
-        # --------------------------
-        # Tampilkan hasil (lebih proporsional)
-        # --------------------------
-        st.markdown("""
-        <style>
-        .image-box {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 30px;
-            margin-top: 10px;
-            margin-bottom: 30px;
-        }
-        .image-box img {
-            border-radius: 15px;
-            max-width: 420px;
-            height: auto;
-            object-fit: contain;
-            border: 2px solid rgba(255,255,255,0.2);
-        }
-        </style>
-        """, unsafe_allow_html=True)
+        # If model available, run predict
+        if st.session_state.model_loaded:
+            try:
+                with st.spinner("Menjalankan deteksi..."):
+                    t0 = time.time()
+                    results = model.predict(source=fpath, conf=conf, verbose=False)
+                    elapsed = time.time() - t0
+                # plot result (returns np array or PIL)
+                result_img = results[0].plot()
+                boxes = results[0].boxes
+                # prepare stats & table
+                data = []
+                for b in boxes:
+                    # b.cls and b.conf indexing
+                    try:
+                        cls_id = int(b.cls[0])
+                        confv = float(b.conf[0])
+                        label = model.names[cls_id] if hasattr(model, "names") else str(cls_id)
+                    except Exception:
+                        label = "unknown"
+                        confv = float(b.conf[0]) if hasattr(b, "conf") else 0.0
+                    data.append({"Label": label, "Confidence": round(confv,3)})
+                df = pd.DataFrame(data)
+                with col_right:
+                    st.markdown("**Hasil Deteksi**")
+                    st.image(result_img, use_container_width=False, width=250)
+                # Below: stats and table
+                st.markdown("---")
+                st.subheader("📊 Statistik Deteksi")
+                lefts, rights = st.columns([1,1])
+                with lefts:
+                    st.write(f"**Waktu Proses:** {elapsed:.2f} detik")
+                    st.write(f"**Total Objek:** {len(boxes)}")
+                with rights:
+                    st.markdown("<div class='table-card'><b>Tabel Deteksi</b></div>", unsafe_allow_html=True)
+                    if not df.empty:
+                        st.table(df)
+                    else:
+                        st.info("Tidak ada objek terdeteksi.")
+            except Exception as e:
+                st.error(f"Gagal saat proses deteksi: {e}")
+        else:
+            with col_right:
+                st.warning("Model YOLO tidak ditemukan / tidak bisa dimuat. Menampilkan placeholder hasil.")
+                st.image("https://via.placeholder.com/640x480.png?text=No+model+loaded", use_column_width=True)
+                st.info("Letakkan model di model/best.pt untuk mengaktifkan deteksi.")
 
-        st.markdown("<div class='image-box'>", unsafe_allow_html=True)
-        st.markdown("<div><h4 style='color:#f2faff; text-align:center;'>Gambar Asli</h4>", unsafe_allow_html=True)
-        st.image(image, width=420)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        st.markdown("<div><h4 style='color:#f2faff; text-align:center;'>Hasil Deteksi</h4>", unsafe_allow_html=True)
-        st.image(detected_pil, width=420)
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        # --------------------------
-        # Statistik Deteksi
-        # --------------------------
-        st.markdown(
-            "<h3 style='color:#d7f3ff; margin-top:10px;'>📊 Statistik Deteksi</h3>",
-            unsafe_allow_html=True
-        )
-
-        stat_col, table_col = st.columns([1.2, 1.8])
-        with stat_col:
-            st.markdown(f"<p style='color:#ffffff;'>Waktu Proses: {elapsed_time:.2f} detik</p>", unsafe_allow_html=True)
-            st.markdown(f"<p style='color:#ffffff;'>Total Objek: {len(labels)}</p>", unsafe_allow_html=True)
-
-        with table_col:
-            st.markdown("<p style='color:#ffffff; margin-bottom:5px;'>Tabel Deteksi</p>", unsafe_allow_html=True)
-            df = pd.DataFrame({
-                "Label": [model.names[int(l)] for l in labels],
-                "Confidence": [float(c) for c in confs]
-            })
-            st.dataframe(df, use_container_width=True)
+        shutil.rmtree(temp_dir, ignore_errors=True)
+    else:
+        st.info("Unggah gambar (.jpg/.png) untuk melakukan deteksi. Jika model belum tersedia, aplikasi tetap menampilkan UI.")
 
 # ---------------------------
 # Router (manual via st.session_state and query param fallback)

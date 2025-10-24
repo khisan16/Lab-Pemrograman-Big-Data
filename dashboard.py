@@ -111,20 +111,6 @@ section.main, .stApp {
   background: transparent !important;
 }
 
-/* Hero card tetap punya gradasi ubur-ubur */
-.hero-container {
-  position: relative;
-  margin: 80px auto;
-  width: 80%;
-  max-width: 700px;
-  background: linear-gradient(135deg, #7a32ff 0%, #44e0ff 100%);
-  border-radius: 24px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
-  padding: 60px 40px;
-  text-align: center;
-  overflow: hidden;
-}
-
 .hero-box {
   background: linear-gradient(135deg, #7a32ff 0%, #44e0ff 100%);
   border-radius: 24px;

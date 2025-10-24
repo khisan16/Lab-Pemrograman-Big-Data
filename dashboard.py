@@ -394,7 +394,7 @@ def page_detect():
 # Router (manual via st.session_state and query param fallback)
 # ---------------------------
 # support simple GET param navigation (back buttons using href hack)
-query_params = st.experimental_get_query_params()
+query_params = st.query_params
 if "nav" in query_params:
     q = query_params["nav"][0]
     if q == "home":

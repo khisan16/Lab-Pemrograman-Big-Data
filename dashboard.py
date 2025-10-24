@@ -346,73 +346,66 @@ def page_detail():
 
 # ---------- DETEKSI ----------
 def page_detection():
-    import streamlit as st
-    import time
-    from PIL import Image
-    import numpy as np
-    import cv2
-    import pandas as pd
-
     st.markdown(
-        "<h1 style='text-align: left; color: #E0E0E0;'>🔍 Deteksi Jenis Ubur-Ubur</h1>",
-        unsafe_allow_html=True
+        "<h2 style='text-align:center; color:#eaf9ff; margin-bottom:20px;'>Deteksi Jenis Ubur-Ubur</h2>",
+        unsafe_allow_html=True,
     )
 
-    # Tombol Back ke halaman utama
-    if st.button("Back"):
-        st.session_state.page = "home"
-        st.rerun()
+    # Tombol Back (berfungsi kembali ke home)
+    back_col, _ = st.columns([1, 5])
+    with back_col:
+        st.button("⬅️ Back", key="back_from_detection", on_click=nav_to, args=("home",))
 
-    # Upload file gambar
-    uploaded_file = st.file_uploader("Unggah gambar untuk deteksi", type=["jpg", "jpeg", "png"])
-    if uploaded_file is not None:
+    uploaded_file = st.file_uploader(
+        "Unggah gambar untuk deteksi",
+        type=["jpg", "jpeg", "png"],
+        help="Limit 200MB per file • JPG, JPEG, PNG"
+    )
+
+    if uploaded_file:
         image = Image.open(uploaded_file)
-        img_array = np.array(image)
+        temp_path = os.path.join("temp", uploaded_file.name)
+        os.makedirs("temp", exist_ok=True)
+        image.save(temp_path)
 
+        # Proses deteksi YOLO
+        start_time = time.time()
+        results = model.predict(temp_path)
+        elapsed_time = time.time() - start_time
+
+        # Ambil hasil
+        detected_img = results[0].plot()  # Gambar dengan bounding box
+        detected_pil = Image.fromarray(detected_img[:, :, ::-1])
+        labels = results[0].boxes.cls
+        confs = results[0].boxes.conf
+
+        # Tampilkan hasil
         col1, col2 = st.columns(2)
-
         with col1:
-            st.markdown("<h5 style='color:#E0E0E0; text-align:center;'>Gambar Asli</h5>", unsafe_allow_html=True)
-            st.image(image, width=300, caption="", use_container_width=False)
-
+            st.markdown("<h4 style='color:#f2faff;'>Gambar Asli</h4>", unsafe_allow_html=True)
+            st.image(image, use_container_width=True)
         with col2:
-            st.markdown("<h5 style='color:#E0E0E0; text-align:center;'>Hasil Deteksi</h5>", unsafe_allow_html=True)
-            progress_text = "⏳ Sedang memproses deteksi..."
-            progress_bar = st.progress(0, text=progress_text)
+            st.markdown("<h4 style='color:#f2faff;'>Hasil Deteksi</h4>", unsafe_allow_html=True)
+            st.image(detected_pil, use_container_width=True)
 
-            # Simulasi proses deteksi
-            for percent_complete in range(100):
-                time.sleep(0.02)
-                progress_bar.progress(percent_complete + 1, text=progress_text)
-            time.sleep(0.5)
-            progress_bar.empty()
-
-            # Simulasi hasil deteksi
-            detected_image = img_array.copy()
-            cv2.rectangle(detected_image, (50, 50), (250, 250), (0, 0, 255), 2)
-            cv2.putText(detected_image, "barrel-jellyfish 0.96", (55, 45),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 100, 100), 2)
-            st.image(detected_image, width=300, caption="", use_container_width=False)
-
-        # Statistik hasil deteksi
+        # Statistik & Tabel sejajar
         st.markdown(
-            "<h3 style='color:#E0E0E0; margin-top:30px;'>📊 Statistik Deteksi</h3>",
+            "<h3 style='color:#d7f3ff; margin-top:25px;'>📊 Statistik Deteksi</h3>",
             unsafe_allow_html=True
         )
 
-        col3, col4 = st.columns([1.5, 2])
+        stat_col, table_col = st.columns([1.2, 1.8])
+        with stat_col:
+            st.markdown(f"<p style='color:#ffffff;'>Waktu Proses: {elapsed_time:.2f} detik</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='color:#ffffff;'>Total Objek: {len(labels)}</p>", unsafe_allow_html=True)
 
-        with col3:
-            st.markdown("<p style='color:#E0E0E0;'>Waktu Proses: 10.38 detik</p>", unsafe_allow_html=True)
-            st.markdown("<p style='color:#E0E0E0;'>Total Objek: 1</p>", unsafe_allow_html=True)
-
-        with col4:
-            data = {"Label": ["barrel-jellyfish"], "Confidence": [0.9640]}
-            df = pd.DataFrame(data)
-            st.dataframe(df, use_container_width=True, hide_index=True)
-
-    else:
-        st.info("Silakan unggah gambar ubur-ubur untuk mendeteksi jenisnya.")
+        with table_col:
+            st.markdown("<p style='color:#ffffff; margin-bottom:5px;'>Tabel Deteksi</p>", unsafe_allow_html=True)
+            df = pd.DataFrame({
+                "Label": [model.names[int(l)] for l in labels],
+                "Confidence": [float(c) for c in confs]
+            })
+            st.dataframe(df, use_container_width=True)
 
 # ---------------------------
 # Router (manual via st.session_state and query param fallback)

@@ -1,127 +1,372 @@
+# dashboard.py
 import streamlit as st
 from PIL import Image
-from ultralytics import YOLO
-import tempfile, os, shutil, time
+import os, tempfile, shutil, time
 import pandas as pd
 
-# ============================
-# 🔧 Konfigurasi Halaman
-# ============================
-st.set_page_config(page_title="YOLOv8 Object Detection Dashboard", page_icon="🪼", layout="wide")
+# Try to import YOLO if available
+try:
+    from ultralytics import YOLO
+    YOLO_AVAILABLE = True
+except Exception:
+    YOLO_AVAILABLE = False
 
-# ============================
-# 🎨 CSS Kustom
-# ============================
+# ---------------------------
+# Helper: resolve image path
+# ---------------------------
+def find_image(name_variants, search_dirs=[".","images","assets","img"]):
+    for d in search_dirs:
+        for v in name_variants:
+            p = os.path.join(d, v)
+            if os.path.exists(p):
+                return p
+    return None
+
+# ---------------------------
+# Data: species + possible filenames + description
+# ---------------------------
+SPECIES = [
+    {
+        "key": "moon-jellyfish",
+        "labels": ["moon-jellyfish.jpg", "moon-jellyfish.jpeg", "moon_jellyfish.jpg"],
+        "title": "Moon Jellyfish",
+        "desc": """• Bentuk dan warna: Tubuh transparan berbentuk lonceng pipih. 
+• Organ reproduksi: Gonad berbentuk empat cincin yang terlihat. 
+• Tentakel: Pendek dan halus, tidak berbahaya untuk manusia umumnya.
+• Ukuran: Diameter bisa mencapai ~30 cm."""
+    },
+    {
+        "key": "blue-jellyfish",
+        "labels": ["blue-jellyfish.jpg", "blue_jellyfish.jpg"],
+        "title": "Blue Jellyfish",
+        "desc": "• Bentuk: Lonjong dengan rona kebiruan.\n• Tentakel: Lebih panjang dari moon jellyfish.\n• Ciri khas: Warna biru yang dominan."
+    },
+    {
+        "key": "mauve-stringer-jellyfish",
+        "labels": ["mauve-stringer-jellyfish.jpg","mauve-stringer.jpg"],
+        "title": "Mauve Stringer Jellyfish",
+        "desc": "• Bentuk: Memiliki tentakel panjang menyerupai string.\n• Ciri khas: Warna ungu/mauve yang kontras.\n• Ukuran: Tentakel yang panjang dapat mencapai jarak yang signifikan."
+    },
+    {
+        "key": "lions-mane-jellyfish",
+        "labels": ["lions-mane-jellyfish.jpg", "lion-mane-jellyfish.jpg","lion's-mane-jellyfish.jpg","lion’s-mane-jellyfish.jpg"],
+        "title": "Lion's Mane Jellyfish",
+        "desc": "• Bentuk: Lonceng besar dengan tentakel sangat panjang.\n• Ciri khas: Mirip surai singa (banyak tentakel).\n• Potensi bahaya: Bisa menyebabkan sengatan menyakitkan."
+    },
+    {
+        "key": "compass-jellyfish",
+        "labels": ["compass-jellyfish.jpg", "compass_jellyfish.jpg"],
+        "title": "Compass Jellyfish",
+        "desc": "• Ciri khas: Pola seperti kompas di loncengnya.\n• Tentakel: Rata-rata panjang, bentuk khas pada permukaan."
+    },
+    {
+        "key": "barrel-jellyfish",
+        "labels": ["barrel-jellyfish.jpg", "barrel_jellyfish.jpg"],
+        "title": "Barrel Jellyfish",
+        "desc": "• Bentuk: Lonceng besar, menyerupai barel/ember.\n• Ukuran: Dapat menjadi relatif besar dibanding jenis lain."
+    }
+]
+
+# Pre-resolve image paths (best-effort)
+for s in SPECIES:
+    s["img_path"] = find_image(s["labels"])  # can be None if not found
+
+# ---------------------------
+# Page state & nav helpers
+# ---------------------------
+if "page" not in st.session_state:
+    st.session_state.page = "home"
+if "selected" not in st.session_state:
+    st.session_state.selected = None
+if "conf_thres" not in st.session_state:
+    st.session_state.conf_thres = 0.25
+
+def nav_to(p):
+    st.session_state.page = p
+
+def select_species(key):
+    st.session_state.selected = key
+    st.session_state.page = "detail"
+
+# ---------------------------
+# CSS / Styling
+# ---------------------------
+st.set_page_config(page_title="Ubur-Ubur: Edu & Deteksi", page_icon="🪼", layout="wide")
+
 st.markdown("""
 <style>
-[data-testid="stAppViewContainer"] {
-    background-color: #0b0c10;
-    background-image: linear-gradient(160deg, #0b0c10 0%, #1f2833 100%);
-    color: #c5c6c7;
+body {background: linear-gradient(90deg, #0f0c29, #302b63, #24243e); color: #e6eef2;}
+.header-hero {
+  border-radius: 18px;
+  padding: 36px;
+  background: linear-gradient(135deg,#8a2be2 0%, #66d9ff 60%);
+  color: white;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
 }
-h1, h2, h3 { color: #66fcf1; font-weight: 700; }
-.sidebar .sidebar-content { background-color: #1f2833; }
-.stButton button {
-    background: linear-gradient(90deg, #45a29e, #66fcf1);
-    color: #0b0c10; font-weight: bold; border-radius: 8px;
+.hero-title {font-size:34px; font-weight:800; text-align:center;}
+.hero-sub {font-size:22px; text-align:center; margin-top:8px; opacity:0.95;}
+.btn-hero {
+  display:inline-block; padding:12px 26px; border-radius:30px; margin:12px;
+  background: linear-gradient(90deg,#6f2bdc,#9fffd9); color:#091217; font-weight:700;
+  border:none; cursor:pointer;
 }
-.result-card {
-    background-color: #1f2833;
-    padding: 15px; border-radius: 12px;
-    box-shadow: 0px 0px 10px rgba(102,252,241,0.2);
-    margin-top: 10px;
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  padding:12px; border-radius:14px; text-align:center; box-shadow: 0 6px 16px rgba(0,0,0,0.4);
 }
+.spec-img {border-radius:12px; width:160px; height:160px; object-fit:cover; border:4px solid rgba(255,255,255,0.04);}
+.grid-title {font-weight:800; font-size:24px; color:#fff; margin-bottom:10px; text-decoration: underline;}
+.back-btn {background:#fff; color:#2b1055; padding:8px 12px; border-radius:8px; font-weight:700;}
+.small-muted {color:#b8c4cc; font-size:14px;}
+.results-left {padding-right:20px;}
+.table-card {background: rgba(255,255,255,0.02); padding:10px; border-radius:10px;}
 </style>
 """, unsafe_allow_html=True)
 
-# ============================
-# 🪼 Header
-# ============================
-st.title("🪼 Object Detection Dashboard (YOLOv8)")
-st.markdown("**Deteksi Objek Otomatis dengan Dashboard Interaktif**")
+# ---------------------------
+# Load model (once)
+# ---------------------------
+model = None
+if "model_loaded" not in st.session_state:
+    st.session_state.model_loaded = False
 
-# ============================
-# ⚙️ Sidebar Pengaturan
-# ============================
-st.sidebar.header("⚙️ Pengaturan Deteksi")
-conf_thres = st.sidebar.slider("Confidence Threshold", 0.1, 1.0, 0.25, 0.05)
-show_labels = st.sidebar.checkbox("Tampilkan Label di Gambar", True)
-show_stats = st.sidebar.checkbox("Tampilkan Statistik Hasil", True)
-st.sidebar.divider()
-st.sidebar.caption("Dikembangkan oleh **HISAN** ✨")
+if YOLO_AVAILABLE and not st.session_state.model_loaded:
+    try:
+        # Attempt to load model from model/best.pt (common location in repo)
+        model_path_candidates = ["model/best.pt", "best.pt", "models/best.pt"]
+        found = None
+        for p in model_path_candidates:
+            if os.path.exists(p):
+                found = p
+                break
+        if found:
+            model = YOLO(found)
+            st.session_state.model_loaded = True
+            st.session_state.model_path = found
+        else:
+            st.session_state.model_loaded = False
+            st.session_state.model_path = None
+    except Exception as e:
+        st.session_state.model_loaded = False
+        st.session_state.model_error = str(e)
 
-# ============================
-# 📦 Load Model
-# ============================
-try:
-    model = YOLO("model/best.pt")
-except Exception as e:
-    st.error(f"Gagal memuat model YOLOv8: {e}")
-    st.stop()
+# If already loaded earlier in session, reuse
+if st.session_state.model_loaded:
+    try:
+        if model is None:
+            model = YOLO(st.session_state.model_path)
+    except Exception:
+        pass
 
-# ============================
-# 📁 Upload Gambar
-# ============================
-uploaded_file = st.file_uploader("Unggah gambar", type=["jpg", "jpeg", "png"])
+# ---------------------------
+# ---------- PAGES ----------
+# ---------------------------
 
-if uploaded_file:
-    temp_dir = tempfile.mkdtemp()
-    file_path = os.path.join(temp_dir, uploaded_file.name)
+# ---------- HOME ----------
+def page_home():
+    c1, c2 = st.columns([2,1])
+    with c1:
+        st.markdown("<div class='header-hero'>", unsafe_allow_html=True)
+        st.markdown("<div class='hero-title'>HALO! SELAMAT DATANG</div>", unsafe_allow_html=True)
+        st.markdown("<div class='hero-sub'>MAU NGAPAIN NIH?</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align:center; margin-top:18px'>", unsafe_allow_html=True)
+        if st.button("MENGENAL JENIS-JENIS UBUR-UBUR", key="btn_gallery"):
+            nav_to("gallery")
+        if st.button("DETEKSI JENIS UBUR-UBUR", key="btn_detect"):
+            nav_to("detect")
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+    with c2:
+        # show a cute jellyfish (use first available species image)
+        first_img = None
+        for s in SPECIES:
+            if s.get("img_path"):
+                first_img = s["img_path"]
+                break
+        if first_img:
+            st.image(first_img, width=280)
+        else:
+            st.markdown("![jelly](https://via.placeholder.com/280x200.png?text=Jellyfish)")
 
-    with open(file_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
+# ---------- GALLERY ----------
+def page_gallery():
+    st.markdown("<div style='display:flex; justify-content:space-between; align-items:center;'>"
+                f"<h2 class='grid-title'>MARI MENGENAL JENIS-JENIS UBUR-UBUR</h2>"
+                f"<button class='back-btn' onclick=\"window.location.href='?nav=home'\">Back</button>"
+                "</div>", unsafe_allow_html=True)
 
-    if not os.path.exists(file_path):
-        st.error("❌ File tidak ditemukan setelah upload. Coba unggah ulang.")
-    else:
-        img = Image.open(file_path)
-        st.image(img, caption="📸 Gambar Asli", use_container_width=True)
+    # grid 3 columns x 2 rows
+    cols = st.columns(3)
+    idx = 0
+    for r in range(2):
+        for c in range(3):
+            if idx >= len(SPECIES):
+                break
+            s = SPECIES[idx]
+            with cols[c]:
+                st.markdown("<div class='card'>", unsafe_allow_html=True)
+                if s.get("img_path"):
+                    st.image(s["img_path"], caption=None, use_column_width=False, width=160)
+                else:
+                    st.image("https://via.placeholder.com/160.png?text=No+Image", width=160)
+                st.markdown(f"**{s['title']}**")
+                # clickable button to open detail
+                if st.button("Lihat Detail", key=f"open_{s['key']}"):
+                    select_species(s['key'])
+                st.markdown("</div>", unsafe_allow_html=True)
+            idx += 1
 
-        with st.spinner("🧠 Sedang mendeteksi objek..."):
-            start_time = time.time()
-            results = model.predict(source=file_path, conf=conf_thres, verbose=False)
-            elapsed = time.time() - start_time
+    st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
 
-        result_image = results[0].plot()
-        boxes = results[0].boxes
+# ---------- DETAIL ----------
+def page_detail():
+    # find selected species dict
+    key = st.session_state.selected
+    s = next((x for x in SPECIES if x['key'] == key), None)
+    if s is None:
+        st.error("Spesies tidak ditemukan. Kembali ke Galeri.")
+        if st.button("Back to Gallery"):
+            nav_to("gallery")
+        return
 
-        col1, col2 = st.columns([1, 1])
-        with col2:
-            st.image(result_image, caption="🔍 Hasil Deteksi YOLOv8", use_container_width=True)
+    top_col, _ = st.columns([1,4])
+    with top_col:
+        if st.button("⬅️ Back", key="back_from_detail"):
+            nav_to("gallery")
 
-        with col1:
-            st.markdown("<div class='result-card'>", unsafe_allow_html=True)
-            st.subheader("📊 Statistik Deteksi")
-            st.write(f"**Waktu Proses:** {elapsed:.2f} detik")
-            st.write(f"**Total Objek:** {len(boxes)}")
-            st.markdown("</div>", unsafe_allow_html=True)
+    left, right = st.columns([1,2])
+    with left:
+        if s.get("img_path"):
+            st.image(s["img_path"], use_column_width=True)
+        else:
+            st.image("https://via.placeholder.com/380x380.png?text=No+Image", use_column_width=True)
+    with right:
+        st.markdown(f"### {s['title']}")
+        st.markdown(f"<div class='small-muted'>{s.get('desc','Deskripsi belum tersedia.')}</div>", unsafe_allow_html=True)
 
-    shutil.rmtree(temp_dir, ignore_errors=True)
+# ---------- DETECT ----------
+def page_detect():
+    st.markdown("<div style='display:flex; justify-content:space-between; align-items:center;'>"
+                f"<h2 class='grid-title'>Deteksi Jenis Ubur-Ubur</h2>"
+                f"<button class='back-btn' onclick=\"window.location.href='?nav=home'\">Back</button>"
+                "</div>", unsafe_allow_html=True)
 
-    # ============================
-    # 🎭 Hasil Deteksi
-    # ============================
-    col1, col2 = st.columns([1, 1])
-    with col2:
-        st.image(result_image, caption="🔍 Hasil Deteksi YOLOv8", use_container_width=True)
+    st.sidebar.header("Pengaturan Deteksi")
+    conf = st.sidebar.slider("Confidence Threshold", 0.05, 1.0, st.session_state.conf_thres, 0.05)
+    st.session_state.conf_thres = conf
 
-    if show_stats:
-        with col1:
-            st.markdown("<div class='result-card'>", unsafe_allow_html=True)
-            st.subheader("📊 Statistik Deteksi")
-            st.write(f"**Waktu Proses:** {elapsed:.2f} detik")
-            st.write(f"**Total Objek:** {len(boxes)}")
+    uploaded_file = st.file_uploader("Unggah gambar untuk deteksi", type=["jpg","jpeg","png"])
 
-            if len(boxes) > 0:
+    if uploaded_file:
+        temp_dir = tempfile.mkdtemp()
+        fpath = os.path.join(temp_dir, uploaded_file.name)
+        with open(fpath, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+
+        if not os.path.exists(fpath):
+            st.error("Terjadi kesalahan saat menyimpan file. Coba unggah ulang.")
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return
+
+        # Show original image left, detection result right
+        col_left, col_right = st.columns([1,1])
+        with col_left:
+            st.markdown("**Gambar Asli**")
+            st.image(fpath, use_column_width=True)
+
+        # If model available, run predict
+        if st.session_state.model_loaded:
+            try:
+                with st.spinner("Menjalankan deteksi..."):
+                    t0 = time.time()
+                    results = model.predict(source=fpath, conf=conf, verbose=False)
+                    elapsed = time.time() - t0
+                # plot result (returns np array or PIL)
+                result_img = results[0].plot()
+                boxes = results[0].boxes
+                # prepare stats & table
                 data = []
-                for box in boxes:
-                    cls_id = int(box.cls[0])
-                    conf = float(box.conf[0])
-                    label = model.names[cls_id]
-                    data.append({"Label": label, "Confidence": round(conf, 2)})
+                for b in boxes:
+                    # b.cls and b.conf indexing
+                    try:
+                        cls_id = int(b.cls[0])
+                        confv = float(b.conf[0])
+                        label = model.names[cls_id] if hasattr(model, "names") else str(cls_id)
+                    except Exception:
+                        label = "unknown"
+                        confv = float(b.conf[0]) if hasattr(b, "conf") else 0.0
+                    data.append({"Label": label, "Confidence": round(confv,3)})
                 df = pd.DataFrame(data)
-                st.table(df)
-                st.bar_chart(df.set_index("Label")["Confidence"])
-            st.markdown("</div>", unsafe_allow_html=True)
+                with col_right:
+                    st.markdown("**Hasil Deteksi**")
+                    st.image(result_img, use_column_width=True)
+                # Below: stats and table
+                st.markdown("---")
+                st.subheader("📊 Statistik Deteksi")
+                lefts, rights = st.columns([1,1])
+                with lefts:
+                    st.write(f"**Waktu Proses:** {elapsed:.2f} detik")
+                    st.write(f"**Total Objek:** {len(boxes)}")
+                with rights:
+                    st.markdown("<div class='table-card'><b>Tabel Deteksi</b></div>", unsafe_allow_html=True)
+                    if not df.empty:
+                        st.table(df)
+                    else:
+                        st.info("Tidak ada objek terdeteksi.")
+            except Exception as e:
+                st.error(f"Gagal saat proses deteksi: {e}")
+        else:
+            with col_right:
+                st.warning("Model YOLO tidak ditemukan / tidak bisa dimuat. Menampilkan placeholder hasil.")
+                st.image("https://via.placeholder.com/640x480.png?text=No+model+loaded", use_column_width=True)
+                st.info("Letakkan model di model/best.pt untuk mengaktifkan deteksi.")
 
-    shutil.rmtree(temp_dir, ignore_errors=True)
+        shutil.rmtree(temp_dir, ignore_errors=True)
+    else:
+        st.info("Unggah gambar (.jpg/.png) untuk melakukan deteksi. Jika model belum tersedia, aplikasi tetap menampilkan UI.")
+
+# ---------------------------
+# Router (manual via st.session_state and query param fallback)
+# ---------------------------
+# support simple GET param navigation (back buttons using href hack)
+query_params = st.experimental_get_query_params()
+if "nav" in query_params:
+    q = query_params["nav"][0]
+    if q == "home":
+        st.session_state.page = "home"
+    elif q == "gallery":
+        st.session_state.page = "gallery"
+    elif q == "detect":
+        st.session_state.page = "detect"
+
+# Render header nav bar
+nav1, nav2, nav3 = st.columns([1,1,1])
+with nav1:
+    if st.button("🏠 Home"):
+        nav_to("home")
+with nav2:
+    if st.button("📚 Mengenal Jenis"):
+        nav_to("gallery")
+with nav3:
+    if st.button("🔍 Deteksi"):
+        nav_to("detect")
+
+st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+
+# Page switch
+if st.session_state.page == "home":
+    page_home()
+elif st.session_state.page == "gallery":
+    page_gallery()
+elif st.session_state.page == "detail":
+    page_detail()
+elif st.session_state.page == "detect":
+    page_detect()
+else:
+    page_home()
+
+# ---------------------------
+# Footer credit
+# ---------------------------
+st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center; color:#bfc9d3'>Aplikasi edukasi & demo deteksi ubur-ubur — dibuat oleh HISAN</div>", unsafe_allow_html=True)

@@ -344,8 +344,14 @@ def page_detail():
         else:
             st.write(s.get('desc', 'Deskripsi belum tersedia.'))
 
-# ---------- DETEKSI ----------
 def page_detection():
+    import cv2
+    import os
+    import time
+    import pandas as pd
+    from PIL import Image
+    import streamlit as st
+
     st.markdown(
         "<h2 style='text-align:center; color:#eaf9ff; margin-bottom:20px;'>Deteksi Jenis Ubur-Ubur</h2>",
         unsafe_allow_html=True,
@@ -370,12 +376,14 @@ def page_detection():
 
         # Proses deteksi YOLO
         start_time = time.time()
-        results = model.predict(temp_path)
+        results = model.predict(temp_path, conf=0.5, imgsz=640, verbose=False)
         elapsed_time = time.time() - start_time
 
         # Ambil hasil
-        detected_img = results[0].plot()  # Gambar dengan bounding box
-        detected_pil = Image.fromarray(detected_img[:, :, ::-1])
+        annotated_frame = results[0].plot(line_width=2, font_size=16)
+        detected_pil = Image.fromarray(cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB))
+        detected_pil = detected_pil.resize(image.size)  # samakan ukuran hasil dengan input
+
         labels = results[0].boxes.cls
         confs = results[0].boxes.conf
 
@@ -383,10 +391,10 @@ def page_detection():
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("<h4 style='color:#f2faff;'>Gambar Asli</h4>", unsafe_allow_html=True)
-            st.image(image, use_container_width=True)
+            st.image(image, width="stretch", clamp=True)
         with col2:
             st.markdown("<h4 style='color:#f2faff;'>Hasil Deteksi</h4>", unsafe_allow_html=True)
-            st.image(detected_pil, use_container_width=True)
+            st.image(detected_pil, width="stretch", clamp=True)
 
         # Statistik & Tabel sejajar
         st.markdown(
@@ -401,11 +409,14 @@ def page_detection():
 
         with table_col:
             st.markdown("<p style='color:#ffffff; margin-bottom:5px;'>Tabel Deteksi</p>", unsafe_allow_html=True)
-            df = pd.DataFrame({
-                "Label": [model.names[int(l)] for l in labels],
-                "Confidence": [float(c) for c in confs]
-            })
-            st.dataframe(df, use_container_width=True)
+            if len(labels) > 0:
+                df = pd.DataFrame({
+                    "Label": [model.names[int(l)] for l in labels],
+                    "Confidence": [f"{float(c):.2f}" for c in confs]
+                })
+            else:
+                df = pd.DataFrame({"Label": ["Tidak ada deteksi"], "Confidence": ["-"]})
+            st.dataframe(df, width="stretch")
             
 # ---------------------------
 # Router (manual via st.session_state and query param fallback)

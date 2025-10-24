@@ -9,7 +9,7 @@ import shutil
 # 🔧 Konfigurasi Halaman
 # ============================
 st.set_page_config(
-    page_title="Mari Mendeteksi Jenis Ubur-Ubur",
+    page_title="Object Detection Dashboard (YOLOv8)",
     page_icon="🪼",
     layout="wide",
 )
@@ -49,8 +49,8 @@ st.markdown("""
 # ============================
 # 🪼 Header
 # ============================
-st.title("🪼 Mari Mendeteksi Jenis Ubur-Ubur")
-st.markdown("**Masukkan gambar ubur-ubur disini dan kamu akan tahu apa jenisnya**")
+st.title("🪼 Object Detection Dashboard (YOLOv8)")
+st.markdown("**Deteksi Objek Otomatis pada Gambar Menggunakan Model YOLOv8**")
 
 # ============================
 # 📦 Load Model

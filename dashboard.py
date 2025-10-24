@@ -266,7 +266,7 @@ def page_gallery():
         unsafe_allow_html=True,
     )
 
-    # Tombol Back (pakai on_click agar konsisten)
+    # Tombol Back
     back_col, _ = st.columns([1, 6])
     with back_col:
         st.button("⬅️ Back", key="back_to_home", on_click=nav_to, args=("home",))
@@ -281,12 +281,23 @@ def page_gallery():
             img_src = s.get("img_path") or "https://via.placeholder.com/300x300.png?text=No+Image"
             st.image(img_src, use_container_width=False, width=220)
 
+            # 🔹 Nama gambar — sedikit lebih kecil dari sebelumnya
             st.markdown(
-                f"<h4 style='color:#eaf9ff; margin-top:10px; font-family:Poppins, sans-serif;'>{s['title']}</h4>",
+                f"""
+                <h4 style="
+                    color:#eaf9ff;
+                    margin-top:10px;
+                    font-family:Poppins, sans-serif;
+                    font-size:17px;
+                    font-weight:600;
+                ">
+                    {s['title']}
+                </h4>
+                """,
                 unsafe_allow_html=True,
             )
 
-            # tombol lihat detail pakai on_click untuk set selected + pindah halaman
+            # Tombol lihat detail (tetap di tengah)
             st.button(
                 "Lihat Detail",
                 key=f"btn_{s['key']}",

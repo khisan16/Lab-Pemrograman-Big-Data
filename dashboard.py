@@ -67,19 +67,36 @@ uploaded_file = st.file_uploader("Unggah gambar", type=["jpg", "jpeg", "png"])
 if uploaded_file:
     temp_dir = tempfile.mkdtemp()
     file_path = os.path.join(temp_dir, uploaded_file.name)
+
     with open(file_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
 
-    img = Image.open(file_path)
-    st.image(img, caption="📸 Gambar Asli", use_container_width=True)
+    if not os.path.exists(file_path):
+        st.error("❌ File tidak ditemukan setelah upload. Coba unggah ulang.")
+    else:
+        img = Image.open(file_path)
+        st.image(img, caption="📸 Gambar Asli", use_container_width=True)
 
-    with st.spinner("🧠 Sedang mendeteksi objek..."):
-        start_time = time.time()
-        results = model.predict(source=file_path, conf=conf_thres, verbose=False)
-        elapsed = time.time() - start_time
+        with st.spinner("🧠 Sedang mendeteksi objek..."):
+            start_time = time.time()
+            results = model.predict(source=file_path, conf=conf_thres, verbose=False)
+            elapsed = time.time() - start_time
 
-    result_image = results[0].plot(show_labels=show_labels)
-    boxes = results[0].boxes
+        result_image = results[0].plot()
+        boxes = results[0].boxes
+
+        col1, col2 = st.columns([1, 1])
+        with col2:
+            st.image(result_image, caption="🔍 Hasil Deteksi YOLOv8", use_container_width=True)
+
+        with col1:
+            st.markdown("<div class='result-card'>", unsafe_allow_html=True)
+            st.subheader("📊 Statistik Deteksi")
+            st.write(f"**Waktu Proses:** {elapsed:.2f} detik")
+            st.write(f"**Total Objek:** {len(boxes)}")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    shutil.rmtree(temp_dir, ignore_errors=True)
 
     # ============================
     # 🎭 Hasil Deteksi
